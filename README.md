@@ -4,25 +4,22 @@ Interview-driven spec generation and Ralph-powered autonomous execution for Clau
 
 ## Installation
 
-### Standard Install (Recommended)
+### One-liner (Recommended)
 
 ```bash
-# 1. Add as marketplace
-/plugin marketplace add yudduy/duy-workflow
+git clone https://github.com/yudduy/duy-workflow.git /tmp/duy-workflow && /tmp/duy-workflow/install.sh && rm -rf /tmp/duy-workflow
+```
 
-# 2. Install the plugin
+Then restart Claude.
+
+### Via Marketplace (may fail on some systems)
+
+```bash
+/plugin marketplace add yudduy/duy-workflow
 /plugin install duy-workflow@duy-workflow
 ```
 
-### Manual Install (Fallback)
-
-If standard install fails:
-
-```bash
-git clone https://github.com/yudduy/duy-workflow.git /tmp/duy-workflow
-/tmp/duy-workflow/install.sh
-rm -rf /tmp/duy-workflow
-```
+Note: May fail with EXDEV error if `/home` and `/tmp` are on different filesystems. Use the one-liner above if this happens.
 
 ### Development Mode
 
