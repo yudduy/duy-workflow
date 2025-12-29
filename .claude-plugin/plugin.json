@@ -1,5 +1,6 @@
 {
   "name": "duy-workflow",
+  "version": "1.0.0",
   "description": "Interview-driven spec generation and Ralph-powered autonomous execution. Two commands: /interview (deep questioning → SPEC.md) and /execute (Ralph loop → implementation).",
   "author": {
     "name": "yudduy"

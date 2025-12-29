@@ -1,5 +1,5 @@
 ---
-description: "Explain the Ralph Workflow plugin and available commands"
+description: Explain the Ralph Workflow plugin and available commands
 ---
 
 # Ralph Workflow Plugin Help

@@ -1,5 +1,5 @@
 ---
-description: "Deep codebase exploration + structured interview → SPEC.md"
+description: Deep codebase exploration + structured interview to generate SPEC.md
 argument-hint: "[feature description]"
 ---
 

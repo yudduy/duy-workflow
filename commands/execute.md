@@ -1,8 +1,7 @@
 ---
-description: "Ralph-powered autonomous execution of SPEC.md with TDD"
+description: Ralph-powered autonomous execution of SPEC.md with TDD
 argument-hint: "[--max-iterations N] [--agent-id N] [--setup-only]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh)", "Bash(git *)"]
-hide-from-slash-command-tool: "true"
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/*), Bash(git *)
 ---
 
 # /execute
@@ -31,25 +30,8 @@ SPEC.md is copied to each worktree as read-only source of truth.
 ## Parse Arguments
 
 ```!
-# Parse arguments
-MAX_ITER=100
-AGENT_ID=""
-SETUP_ONLY=false
-
-ARGS_ARRAY=($ARGUMENTS)
-for i in "${!ARGS_ARRAY[@]}"; do
-  case "${ARGS_ARRAY[$i]}" in
-    --max-iterations)
-      MAX_ITER="${ARGS_ARRAY[$((i+1))]}"
-      ;;
-    --agent-id)
-      AGENT_ID="${ARGS_ARRAY[$((i+1))]}"
-      ;;
-    --setup-only)
-      SETUP_ONLY=true
-      ;;
-  esac
-done
+# Parse arguments using helper script
+eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
 
 echo "Configuration:"
 echo "  Max iterations: $MAX_ITER"
@@ -82,16 +64,8 @@ head -20 docs/SPEC.md | grep -E "^#|^##|^\*\*" | head -10
 ## Worktree Setup (Multi-Agent Mode)
 
 ```!
-# Re-parse AGENT_ID for this block
-AGENT_ID=""
-SETUP_ONLY=false
-ARGS_ARRAY=($ARGUMENTS)
-for i in "${!ARGS_ARRAY[@]}"; do
-  case "${ARGS_ARRAY[$i]}" in
-    --agent-id) AGENT_ID="${ARGS_ARRAY[$((i+1))]}" ;;
-    --setup-only) SETUP_ONLY=true ;;
-  esac
-done
+# Parse arguments (each block runs in isolated shell context)
+eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
 
 if [ -n "$AGENT_ID" ]; then
   WORKTREE_DIR=".worktrees/agent-${AGENT_ID}"
@@ -176,16 +150,8 @@ fi
 ## Initialize Ralph Loop (Single-Agent Mode)
 
 ```!
-# Re-parse MAX_ITER for this block
-MAX_ITER=100
-AGENT_ID=""
-ARGS_ARRAY=($ARGUMENTS)
-for i in "${!ARGS_ARRAY[@]}"; do
-  case "${ARGS_ARRAY[$i]}" in
-    --max-iterations) MAX_ITER="${ARGS_ARRAY[$((i+1))]}" ;;
-    --agent-id) AGENT_ID="${ARGS_ARRAY[$((i+1))]}" ;;
-  esac
-done
+# Parse arguments (each block runs in isolated shell context)
+eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
 
 # Only run Ralph loop in single-agent mode
 if [ -z "$AGENT_ID" ]; then
@@ -210,12 +176,8 @@ fi
 ## Anti-Circumvention Notice
 
 ```!
-# Only show in single-agent mode
-AGENT_ID=""
-ARGS_ARRAY=($ARGUMENTS)
-for i in "${!ARGS_ARRAY[@]}"; do
-  [ "${ARGS_ARRAY[$i]}" == "--agent-id" ] && AGENT_ID="${ARGS_ARRAY[$((i+1))]}"
-done
+# Parse arguments (each block runs in isolated shell context)
+eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
 
 if [ -z "$AGENT_ID" ]; then
   echo ""
