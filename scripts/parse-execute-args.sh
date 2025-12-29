@@ -10,12 +10,24 @@ SETUP_ONLY=false
 while [[ $# -gt 0 ]]; do
   case $1 in
     --max-iterations)
-      MAX_ITER="$2"
-      shift 2
+      # Validate: must have a following argument that's not another flag
+      if [[ -z "${2:-}" || "$2" == --* ]]; then
+        echo "# Warning: --max-iterations requires a number, using default" >&2
+        shift
+      else
+        MAX_ITER="$2"
+        shift 2
+      fi
       ;;
     --agent-id)
-      AGENT_ID="$2"
-      shift 2
+      # Validate: must have a following argument that's not another flag
+      if [[ -z "${2:-}" || "$2" == --* ]]; then
+        echo "# Warning: --agent-id requires a value, ignoring" >&2
+        shift
+      else
+        AGENT_ID="$2"
+        shift 2
+      fi
       ;;
     --setup-only)
       SETUP_ONLY=true

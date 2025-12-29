@@ -101,8 +101,14 @@ if [ -n "$AGENT_ID" ]; then
     mkdir -p .worktrees
 
     # Create worktree with new branch from current HEAD
-    git worktree add "$WORKTREE_DIR" -b "$BRANCH_NAME" 2>/dev/null || \
-      git worktree add "$WORKTREE_DIR" "$BRANCH_NAME"
+    # First try creating new branch, if branch exists, use existing
+    if ! git worktree add "$WORKTREE_DIR" -b "$BRANCH_NAME" 2>&1; then
+      echo "Branch $BRANCH_NAME exists, using it..."
+      if ! git worktree add "$WORKTREE_DIR" "$BRANCH_NAME" 2>&1; then
+        echo "❌ Error: Failed to create worktree"
+        exit 1
+      fi
+    fi
 
     # Copy SPEC.md to worktree
     mkdir -p "$WORKTREE_DIR/docs"

@@ -111,10 +111,22 @@ fi
 
 # Check for completion promise (only if set)
 if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
-  # Extract text from <promise> tags using Perl for multiline support
-  # -0777 slurps entire input, s flag makes . match newlines
-  # .*? is non-greedy (takes FIRST tag), whitespace normalized
-  PROMISE_TEXT=$(echo "$LAST_OUTPUT" | perl -0777 -pe 's/.*?<promise>(.*?)<\/promise>.*/$1/s; s/^\s+|\s+$//g; s/\s+/ /g' 2>/dev/null || echo "")
+  # Extract text from <promise> tags
+  # Try grep first (more portable), fall back to perl for complex cases
+  if command -v grep &>/dev/null && echo "$LAST_OUTPUT" | grep -q '<promise>'; then
+    # Use grep -oP if available (GNU grep), otherwise sed
+    if echo "" | grep -oP '' &>/dev/null 2>&1; then
+      PROMISE_TEXT=$(echo "$LAST_OUTPUT" | grep -oP '<promise>\K[^<]+' | head -1 | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    else
+      # Portable sed extraction
+      PROMISE_TEXT=$(echo "$LAST_OUTPUT" | sed -n 's/.*<promise>\([^<]*\)<\/promise>.*/\1/p' | head -1 | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    fi
+  elif command -v perl &>/dev/null; then
+    # Perl fallback for multiline/complex cases
+    PROMISE_TEXT=$(echo "$LAST_OUTPUT" | perl -0777 -pe 's/.*?<promise>(.*?)<\/promise>.*/$1/s; s/^\s+|\s+$//g; s/\s+/ /g' 2>/dev/null || echo "")
+  else
+    PROMISE_TEXT=""
+  fi
 
   # Use = for literal string comparison (not pattern matching)
   # == in [[ ]] does glob pattern matching which breaks with *, ?, [ characters
@@ -150,8 +162,10 @@ fi
 # Update iteration in frontmatter (portable across macOS and Linux)
 # Create temp file, then atomically replace
 TEMP_FILE="${RALPH_STATE_FILE}.tmp.$$"
+trap "rm -f '$TEMP_FILE'" EXIT
 sed "s/^iteration: .*/iteration: $NEXT_ITERATION/" "$RALPH_STATE_FILE" > "$TEMP_FILE"
 mv "$TEMP_FILE" "$RALPH_STATE_FILE"
+trap - EXIT  # Clear trap after successful mv
 
 # Build system message with iteration count and completion promise info
 if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
