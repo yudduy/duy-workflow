@@ -1,0 +1,13 @@
+{
+  "name": "duy-workflow",
+  "owner": {
+    "name": "yudduy"
+  },
+  "plugins": [
+    {
+      "name": "duy-workflow",
+      "source": "./",
+      "description": "Interview-driven spec generation and Ralph-powered autonomous execution"
+    }
+  ]
+}
