@@ -6,6 +6,7 @@
 MAX_ITER=100
 AGENT_ID=""
 SETUP_ONLY=false
+SPEC_PATH=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -34,11 +35,26 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     *)
+      # Non-flag argument = spec path
+      if [[ "$1" != --* && -z "$SPEC_PATH" ]]; then
+        SPEC_PATH="$1"
+      fi
       shift
       ;;
   esac
 done
 
+# Auto-detect spec path if not provided
+if [[ -z "$SPEC_PATH" ]]; then
+  if [[ -f "docs/SPEC.md" ]]; then
+    SPEC_PATH="docs/SPEC.md"
+  elif [[ -d "docs/specs" ]]; then
+    # Find most recently modified spec
+    SPEC_PATH=$(ls -t docs/specs/*.spec.md 2>/dev/null | head -1)
+  fi
+fi
+
 echo "MAX_ITER=$MAX_ITER"
 echo "AGENT_ID=$AGENT_ID"
 echo "SETUP_ONLY=$SETUP_ONLY"
+echo "SPEC_PATH=$SPEC_PATH"

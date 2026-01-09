@@ -1,12 +1,20 @@
 ---
 description: Ralph-powered autonomous execution of SPEC.md with TDD
-argument-hint: "[--max-iterations N] [--agent-id N] [--setup-only]"
+argument-hint: "[spec-path] [--max-iterations N]"
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/*), Bash(git *)
 ---
 
 # /execute
 
-Execute the specification in `docs/SPEC.md` using a Ralph loop.
+Execute a specification using a Ralph loop with subagent delegation.
+
+## Usage
+
+```bash
+/execute                              # Uses docs/SPEC.md or finds latest in docs/specs/
+/execute docs/specs/user-auth.spec.md # Execute specific spec
+/execute --max-iterations 50          # Limit iterations (default: 100)
+```
 
 ## Multi-Agent Mode
 
@@ -34,31 +42,35 @@ SPEC.md is copied to each worktree as read-only source of truth.
 eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
 
 echo "Configuration:"
+echo "  Spec: ${SPEC_PATH:-"(auto-detect)"}"
 echo "  Max iterations: $MAX_ITER"
-echo "  Agent ID: ${AGENT_ID:-"(single agent mode)"}"
-echo "  Setup only: $SETUP_ONLY"
 ```
 
 ## Prerequisites Check
 
 ```!
-# Check for SPEC.md
-if [ ! -f "docs/SPEC.md" ]; then
-  echo "❌ Error: docs/SPEC.md not found"
+# Re-parse to get SPEC_PATH in this shell context
+eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
+
+# Check for spec file
+if [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; then
+  echo "❌ Error: No spec file found"
+  echo ""
+  echo "   Looked in:"
+  echo "     - Provided path: ${SPEC_PATH:-"(none)"}"
+  echo "     - docs/SPEC.md"
+  echo "     - docs/specs/*.spec.md"
   echo ""
   echo "   Run /interview first to create a specification."
-  echo ""
-  echo "   The /execute command implements specifications autonomously."
-  echo "   Without a spec, there's nothing to execute."
   exit 1
 fi
 
-echo "✅ Found docs/SPEC.md"
+echo "✅ Found: $SPEC_PATH"
 
 # Show spec summary
 echo ""
 echo "Specification:"
-head -20 docs/SPEC.md | grep -E "^#|^##|^\*\*" | head -10
+head -20 "$SPEC_PATH" | grep -E "^#|^##|^\*\*" | head -10
 ```
 
 ## Worktree Setup (Multi-Agent Mode)
@@ -84,7 +96,7 @@ if [ -n "$AGENT_ID" ]; then
     echo ""
     echo "   cd $(pwd)/$WORKTREE_DIR && claude"
     echo ""
-    echo "   Then run: /execute --max-iterations 100"
+    echo "   Then run: /execute"
     echo ""
   else
     # Create worktree
@@ -110,9 +122,9 @@ if [ -n "$AGENT_ID" ]; then
       fi
     fi
 
-    # Copy SPEC.md to worktree
-    mkdir -p "$WORKTREE_DIR/docs"
-    cp docs/SPEC.md "$WORKTREE_DIR/docs/SPEC.md"
+    # Copy spec file to worktree
+    mkdir -p "$WORKTREE_DIR/docs/specs"
+    cp "$SPEC_PATH" "$WORKTREE_DIR/$SPEC_PATH"
 
     # Copy .env if exists
     [ -f .env ] && cp .env "$WORKTREE_DIR/.env"
@@ -120,7 +132,7 @@ if [ -n "$AGENT_ID" ]; then
 
     echo "✅ Worktree created: $WORKTREE_DIR"
     echo "✅ Branch: $BRANCH_NAME"
-    echo "✅ SPEC.md copied to worktree"
+    echo "✅ Spec copied: $SPEC_PATH"
     echo ""
     echo "═══════════════════════════════════════════════════════════════════"
     echo "NEXT STEPS FOR AGENT $AGENT_ID"
@@ -128,7 +140,7 @@ if [ -n "$AGENT_ID" ]; then
     echo ""
     echo "   1. Open a NEW terminal"
     echo "   2. Run: cd $(pwd)/$WORKTREE_DIR && claude"
-    echo "   3. In Claude: /execute --max-iterations 100"
+    echo "   3. In Claude: /execute $SPEC_PATH"
     echo ""
     echo "   Each agent works in isolation. When done:"
     echo "   - Agent creates docs/RESULTS.md with summary"
@@ -153,25 +165,42 @@ if [ -f "docs/PROGRESS.md" ]; then
 fi
 ```
 
-## Initialize Ralph Loop (Single-Agent Mode)
+## Initialize Ralph Loop
 
 ```!
 # Parse arguments (each block runs in isolated shell context)
 eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
 
-# Only run Ralph loop in single-agent mode
+# Only run Ralph loop in single-agent mode (no --agent-id)
 if [ -z "$AGENT_ID" ]; then
   "${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
     --max-iterations "$MAX_ITER" \
     --completion-promise "ALL_REQUIREMENTS_VERIFIED" \
-    "Implement docs/SPEC.md with TDD.
+    "Implement $SPEC_PATH with TDD using subagent delegation.
 
-READ: docs/SPEC.md (requirements), docs/PROGRESS.md (done), git log -5 (recent)
-FIND: First PENDING requirement
-IMPLEMENT: Write failing test → implement → refactor → commit
-UPDATE: Mark COMPLETED in PROGRESS.md
-REPEAT: Until all requirements done
+## Your Role: ORCHESTRATOR
+You are the orchestrator. You DO NOT write code directly.
+You delegate ALL implementation work to subagents via the Task tool.
 
+## Each Iteration:
+1. READ: $SPEC_PATH (requirements), docs/PROGRESS.md (status)
+2. FIND: First PENDING requirement
+3. DELEGATE: Use Task tool to spawn implementation subagent:
+   - Subagent type: backend-engineer or frontend-engineer (as appropriate)
+   - Give it the specific requirement to implement
+   - Include relevant file paths and context
+4. VERIFY: Check subagent's work (tests pass, code correct)
+5. UPDATE: Mark requirement COMPLETED in PROGRESS.md
+6. REPEAT: Until all requirements done
+
+## Subagent Prompt Template:
+\"Implement [REQ-X] from $SPEC_PATH.
+Requirement: [copy requirement text]
+Follow TDD: write failing test first, then implement, then refactor.
+Relevant files: [list key files]
+When done, ensure tests pass.\"
+
+## Completion:
 FINAL CHECK: All tests pass, build clean, lint clean
 THEN: <promise>ALL_REQUIREMENTS_VERIFIED</promise>
 
@@ -311,7 +340,8 @@ When running as an agent in a worktree:
 ## Iron Laws
 
 1. **SPEC is ground truth** - Read it each iteration
-2. **No code without failing test** - TDD always
-3. **Verify before claiming** - Show actual output
-4. **Update progress continuously** - State lives in files
-5. **Do not lie to exit** - Promise must be TRUE
+2. **Orchestrate, don't implement** - Delegate to subagents via Task tool
+3. **No code without failing test** - TDD always (subagents follow this)
+4. **Verify before claiming** - Check subagent work, show actual output
+5. **Update progress continuously** - State lives in files
+6. **Do not lie to exit** - Promise must be TRUE

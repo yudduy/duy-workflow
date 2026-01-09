@@ -163,14 +163,27 @@ Move to spec generation when:
 
 ## PHASE 3: SPEC GENERATION
 
-### Output: docs/SPEC.md
+### Output Location: `docs/specs/{feature-name}.spec.md`
+
+**Filename Generation:**
+1. Extract the core feature name from the user's initial request or interview summary
+2. Convert to kebab-case: lowercase, spaces→hyphens, remove special chars
+3. Examples:
+   - "Add user authentication" → `user-authentication.spec.md`
+   - "API rate limiting" → `api-rate-limiting.spec.md`
+   - "Fix checkout flow" → `fix-checkout-flow.spec.md`
+
+**Before writing the spec:**
+```bash
+mkdir -p docs/specs
+```
 
 Create a comprehensive specification:
 
 ```markdown
 # Specification: [Feature Name]
 
-> **For Claude:** Use `/execute` to implement this spec autonomously.
+> **For Claude:** Use `/execute docs/specs/{this-filename}.spec.md` to implement this spec autonomously.
 
 ## Goal
 [One sentence describing the desired outcome]
@@ -243,10 +256,10 @@ Explicitly NOT included in this implementation:
 
 ## HANDOFF
 
-After generating SPEC.md:
+After generating the spec file:
 
 ```
-Specification complete: docs/SPEC.md
+Specification complete: docs/specs/{feature-name}.spec.md
 
 Summary:
 - [N] core requirements
@@ -261,8 +274,10 @@ Interview covered:
 - Edge cases ✓
 - Verification ✓
 
-Ready for `/execute` to begin autonomous implementation?
+To execute: /execute docs/specs/{feature-name}.spec.md
 ```
+
+**Important:** Tell the user the exact filename you created so they can reference it later.
 
 ---
 

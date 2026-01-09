@@ -20,6 +20,7 @@ cp -r "$SCRIPT_DIR"/.claude-plugin "$CACHE_DIR/"
 cp -r "$SCRIPT_DIR"/commands "$CACHE_DIR/"
 cp -r "$SCRIPT_DIR"/hooks "$CACHE_DIR/"
 cp -r "$SCRIPT_DIR"/scripts "$CACHE_DIR/"
+cp -r "$SCRIPT_DIR"/templates "$CACHE_DIR/" 2>/dev/null || true
 cp "$SCRIPT_DIR"/README.md "$CACHE_DIR/" 2>/dev/null || true
 
 echo "✅ Copied plugin to cache"
@@ -102,5 +103,7 @@ echo ""
 echo "✅ Installation complete!"
 echo ""
 echo "Restart Claude Code, then use:"
-echo "  /duy-workflow:interview"
-echo "  /duy-workflow:execute"
+echo "  /duy-workflow:gen-claude-md - Generate CLAUDE.md via exploration agents"
+echo "  /duy-workflow:interview     - Create spec from interview"
+echo "  /duy-workflow:execute       - Execute spec with subagents"
+echo "  /duy-workflow:add-mistake   - Add anti-pattern to CLAUDE.md"

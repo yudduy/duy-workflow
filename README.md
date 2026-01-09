@@ -1,6 +1,6 @@
 # duy-workflow
 
-Interview-driven spec generation and Ralph-powered autonomous execution for Claude Code.
+Interview-driven spec generation, CLAUDE.md auto-generation, and Ralph-powered autonomous execution for Claude Code.
 
 ## Installation
 
@@ -29,7 +29,30 @@ claude --plugin-dir /path/to/duy-workflow
 
 ---
 
-## Usage
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/duy-workflow:gen-claude-md` | Generate/update CLAUDE.md via parallel exploration agents |
+| `/duy-workflow:interview` | Deep exploration + structured interview → SPEC.md |
+| `/duy-workflow:execute` | Ralph-powered TDD implementation |
+| `/duy-workflow:add-mistake` | Add anti-pattern to CLAUDE.md (compounding engineering) |
+| `/duy-workflow:ralph-loop` | Raw Ralph loop (advanced) |
+| `/duy-workflow:cancel-ralph` | Cancel active loop |
+| `/duy-workflow:help` | Show documentation |
+
+---
+
+## Quick Start
+
+### For new projects or onboarding:
+
+```bash
+# Generate CLAUDE.md from codebase exploration
+/duy-workflow:gen-claude-md
+```
+
+### For feature implementation:
 
 ```bash
 # Step 1: Interview - explores codebase, asks structured questions, outputs SPEC.md
@@ -40,6 +63,13 @@ claude --plugin-dir /path/to/duy-workflow
 /duy-workflow:execute --max-iterations 50
 ```
 
+### When Claude makes a mistake:
+
+```bash
+# Add to anti-patterns so it doesn't happen again
+/duy-workflow:add-mistake "Used deprecated API instead of new one"
+```
+
 ---
 
 ## The Workflow
@@ -47,25 +77,15 @@ claude --plugin-dir /path/to/duy-workflow
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                     │
-│   /interview          →           /execute                         │
-│   ───────────                     ─────────                         │
-│   • Explore codebase              • Ralph loop (stop hooks)         │
-│   • AskUserQuestionTool           • Reads SPEC.md                   │
-│   • Web search best practices     • Full TDD enforcement            │
-│   • Output: docs/SPEC.md          • Auto-documents in PROGRESS.md   │
+│   /gen-claude-md      →     /interview      →      /execute         │
+│   ──────────────            ──────────            ─────────         │
+│   • 5 parallel agents       • Explore codebase    • Ralph loop      │
+│   • Discover patterns       • AskUserQuestion     • Reads SPEC.md   │
+│   • Output: CLAUDE.md       • Web search          • TDD enforced    │
+│                             • Output: SPEC.md     • PROGRESS.md     │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `/duy-workflow:interview` | Deep exploration + structured interview → SPEC.md |
-| `/duy-workflow:execute` | Ralph-powered TDD implementation |
-| `/duy-workflow:ralph-loop` | Raw Ralph loop (advanced) |
-| `/duy-workflow:cancel-ralph` | Cancel active loop |
-| `/duy-workflow:help` | Show documentation |
 
 ## Multi-Agent Execution
 
@@ -79,11 +99,22 @@ cd .worktrees/agent-1 && claude  # then: /duy-workflow:execute
 cd .worktrees/agent-2 && claude  # then: /duy-workflow:execute
 ```
 
+## Compounding Engineering
+
+Every time Claude makes a project-specific mistake, add it to CLAUDE.md:
+
+```bash
+/duy-workflow:add-mistake "description of what went wrong"
+```
+
+Over time, Claude learns your project's gotchas and avoids repeating mistakes.
+
 ## Based On
 
 - **Ralph Wiggum technique** by Geoffrey Huntley - autonomous iteration via stop hooks
 - **Thariq's interview method** - deep spec generation via AskUserQuestionTool
 - **TDD enforcement** - no code without failing test
+- **Compounding engineering** - document mistakes to prevent repetition
 
 ## Learn More
 
