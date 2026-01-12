@@ -30,7 +30,7 @@ Each agent gets:
 - Own branch: `execution-agent-{id}`
 - Own Ralph state: `.claude/ralph-loop.local.md` (isolated in worktree)
 
-Progress is tracked directly in the spec file itself (no shared PROGRESS.md).
+Progress is tracked directly in the spec file itself.
 
 ---
 
@@ -179,18 +179,10 @@ if [ -z "$AGENT_ID" ]; then
 You are the orchestrator. You DO NOT write code directly.
 You delegate ALL implementation work to subagents via the Task tool.
 
-## CRITICAL RULES - READ CAREFULLY
-
-### DO NOT USE docs/PROGRESS.md
-- NEVER read docs/PROGRESS.md
-- NEVER write to docs/PROGRESS.md
-- NEVER create docs/PROGRESS.md
-- Progress is tracked ONLY in the spec file itself
-
-### Stay On Task
-- You are implementing ONLY $SPEC_PATH
-- ONLY read and write to $SPEC_PATH for progress
-- IGNORE all other files named PROGRESS.md
+## CRITICAL: Single File Rule
+- Your ONLY file is $SPEC_PATH
+- Requirements AND progress live in $SPEC_PATH
+- Read $SPEC_PATH, update $SPEC_PATH, nothing else
 - DO NOT switch to other tasks or phases
 
 ## Each Iteration:
@@ -283,11 +275,9 @@ For each requirement, follow RED → GREEN → REFACTOR:
 
 ## Progress Tracking
 
-**NEVER use docs/PROGRESS.md** - it causes conflicts when multiple specs run in parallel.
+Progress lives **in the spec file itself** - add a progress section at the bottom.
 
-Progress is tracked **directly in the spec file itself** by adding a progress section at the bottom.
-
-After each requirement, update the progress table at the bottom of YOUR spec file:
+After each requirement, update the progress table in your spec file:
 
 ```markdown
 ---
@@ -361,11 +351,10 @@ When running as an agent in a worktree:
 
 ## Iron Laws
 
-1. **NEVER use docs/PROGRESS.md** - Progress goes in the spec file only
-2. **SPEC is ground truth** - Read it each iteration (requirements + progress)
-3. **Stay on YOUR spec** - Never switch to other specs or phases
+1. **One spec, one file** - Only read/write your assigned spec file
+2. **SPEC is ground truth** - Requirements + progress live in the spec
+3. **Stay on YOUR spec** - Never switch to other tasks or phases
 4. **Orchestrate, don't implement** - Delegate to subagents via Task tool
 5. **No code without failing test** - TDD always (subagents follow this)
 6. **Verify before claiming** - Check subagent work, show actual output
-7. **Update progress in spec** - Add/update progress table in the spec file
-8. **Do not lie to exit** - Promise must be TRUE
+7. **Do not lie to exit** - Promise must be TRUE
