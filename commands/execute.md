@@ -179,10 +179,18 @@ if [ -z "$AGENT_ID" ]; then
 You are the orchestrator. You DO NOT write code directly.
 You delegate ALL implementation work to subagents via the Task tool.
 
-## CRITICAL: Stay On Task
+## CRITICAL RULES - READ CAREFULLY
+
+### DO NOT USE docs/PROGRESS.md
+- NEVER read docs/PROGRESS.md
+- NEVER write to docs/PROGRESS.md
+- NEVER create docs/PROGRESS.md
+- Progress is tracked ONLY in the spec file itself
+
+### Stay On Task
 - You are implementing ONLY $SPEC_PATH
-- Progress is tracked IN the spec file itself (not docs/PROGRESS.md)
-- IGNORE any other spec files or progress files
+- ONLY read and write to $SPEC_PATH for progress
+- IGNORE all other files named PROGRESS.md
 - DO NOT switch to other tasks or phases
 
 ## Each Iteration:
@@ -275,10 +283,11 @@ For each requirement, follow RED → GREEN → REFACTOR:
 
 ## Progress Tracking
 
-Progress is tracked **directly in the spec file** (not in a separate PROGRESS.md).
-This prevents cross-contamination when multiple specs are being executed in parallel.
+**NEVER use docs/PROGRESS.md** - it causes conflicts when multiple specs run in parallel.
 
-After each requirement, update the progress table at the bottom of the spec file:
+Progress is tracked **directly in the spec file itself** by adding a progress section at the bottom.
+
+After each requirement, update the progress table at the bottom of YOUR spec file:
 
 ```markdown
 ---
@@ -352,10 +361,11 @@ When running as an agent in a worktree:
 
 ## Iron Laws
 
-1. **SPEC is ground truth** - Read it each iteration (requirements + progress)
-2. **Stay on YOUR spec** - Never switch to other specs or phases
-3. **Orchestrate, don't implement** - Delegate to subagents via Task tool
-4. **No code without failing test** - TDD always (subagents follow this)
-5. **Verify before claiming** - Check subagent work, show actual output
-6. **Update progress in spec** - Progress table lives in the spec file itself
-7. **Do not lie to exit** - Promise must be TRUE
+1. **NEVER use docs/PROGRESS.md** - Progress goes in the spec file only
+2. **SPEC is ground truth** - Read it each iteration (requirements + progress)
+3. **Stay on YOUR spec** - Never switch to other specs or phases
+4. **Orchestrate, don't implement** - Delegate to subagents via Task tool
+5. **No code without failing test** - TDD always (subagents follow this)
+6. **Verify before claiming** - Check subagent work, show actual output
+7. **Update progress in spec** - Add/update progress table in the spec file
+8. **Do not lie to exit** - Promise must be TRUE
