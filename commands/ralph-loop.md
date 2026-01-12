@@ -12,8 +12,10 @@ Execute the setup script to initialize the Ralph loop:
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" $ARGUMENTS
 
 # Extract and display completion promise if set
-if [ -f .claude/ralph-loop.local.md ]; then
-  PROMISE=$(grep '^completion_promise:' .claude/ralph-loop.local.md | sed 's/completion_promise: *//' | sed 's/^"\(.*\)"$/\1/')
+# Use PPID to find this session's state file
+STATE_FILE=".claude/ralph-loop.${PPID}.local.md"
+if [ -f "$STATE_FILE" ]; then
+  PROMISE=$(grep '^completion_promise:' "$STATE_FILE" | sed 's/completion_promise: *//' | sed 's/^"\(.*\)"$/\1/')
   if [ -n "$PROMISE" ] && [ "$PROMISE" != "null" ]; then
     echo ""
     echo "═══════════════════════════════════════════════════════════"

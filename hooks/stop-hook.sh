@@ -9,11 +9,14 @@ set -euo pipefail
 # Read hook input from stdin (advanced stop hook API)
 HOOK_INPUT=$(cat)
 
-# Check if ralph-loop is active
-RALPH_STATE_FILE=".claude/ralph-loop.local.md"
+# Use PPID for session isolation - each Claude Code process has unique PID
+# The stop hook is a child of Claude Code, so PPID gives us the session PID
+CLAUDE_SESSION_PID=$PPID
+RALPH_STATE_FILE=".claude/ralph-loop.${CLAUDE_SESSION_PID}.local.md"
 
 if [[ ! -f "$RALPH_STATE_FILE" ]]; then
-  # No active loop - allow exit
+  # No active loop for THIS session - allow exit
+  # (other sessions may have their own loops, but we don't interfere)
   exit 0
 fi
 

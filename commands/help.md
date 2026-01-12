@@ -11,15 +11,15 @@ Please explain the following to the user:
 This plugin provides a two-phase development workflow:
 
 ```
-/interview  →  docs/SPEC.md  →  /execute  →  Done
+/duy-workflow:interview  →  docs/specs/{feature}.spec.md  →  /duy-workflow:execute  →  Done
 ```
 
-1. **`/interview`** - Deep exploration + structured interview → outputs `docs/SPEC.md`
-2. **`/execute`** - Ralph-powered autonomous implementation using TDD
+1. **`/duy-workflow:interview`** - Deep exploration + structured interview → outputs `docs/specs/{feature}.spec.md`
+2. **`/duy-workflow:execute`** - Ralph-powered autonomous implementation using TDD
 
 ## Primary Commands
 
-### /interview
+### /duy-workflow:interview
 
 Deep codebase exploration combined with structured user interview.
 
@@ -27,7 +27,7 @@ Deep codebase exploration combined with structured user interview.
 1. Explores your codebase thoroughly (using parallel exploration agents)
 2. Web searches for domain best practices
 3. Asks structured questions via AskUserQuestionTool
-4. Generates comprehensive `docs/SPEC.md` with testable requirements
+4. Generates comprehensive `docs/specs/{feature}.spec.md` with testable requirements
 
 **Features:**
 - Uses AskUserQuestionTool for structured multi-choice questions
@@ -37,15 +37,15 @@ Deep codebase exploration combined with structured user interview.
 
 ---
 
-### /execute [--max-iterations N]
+### /duy-workflow:execute [--max-iterations N]
 
 Ralph-powered autonomous implementation with TDD enforcement.
 
 **Prerequisites:**
-- `docs/SPEC.md` must exist (run `/interview` first)
+- Spec file must exist in `docs/specs/` (run `/duy-workflow:interview` first)
 
 **What it does:**
-1. Reads requirements from `docs/SPEC.md`
+1. Reads requirements from spec file (auto-detects latest in `docs/specs/`)
 2. Initializes Ralph loop with stop hook
 3. Each iteration: read progress → find next PENDING → TDD → commit
 4. Tracks progress in `docs/PROGRESS.md`
@@ -71,7 +71,7 @@ RED → GREEN → REFACTOR → Commit
 
 ### /ralph-loop <PROMPT> [OPTIONS]
 
-Start a raw Ralph loop (advanced use, typically use `/execute` instead).
+Start a raw Ralph loop (advanced use, typically use `/duy-workflow:execute` instead).
 
 **Usage:**
 ```
@@ -83,9 +83,16 @@ Start a raw Ralph loop (advanced use, typically use `/execute` instead).
 - `--max-iterations <n>` - Max iterations before auto-stop
 - `--completion-promise <text>` - Promise phrase to signal completion
 
-### /cancel-ralph
+### /cancel-ralph [--list | --all]
 
-Cancel an active Ralph loop by removing the state file.
+Cancel an active Ralph loop.
+
+**Usage:**
+```
+/cancel-ralph           # Cancel THIS session's loop
+/cancel-ralph --list    # List all active loops
+/cancel-ralph --all     # Cancel ALL active loops
+```
 
 ---
 
@@ -142,9 +149,36 @@ Progress is tracked in `docs/PROGRESS.md`:
 
 | File | Created By | Purpose |
 |------|------------|---------|
-| `docs/SPEC.md` | /interview | Requirements specification |
-| `docs/PROGRESS.md` | /execute | Living progress tracking |
-| `.claude/ralph-loop.local.md` | /execute | Ralph state (auto-managed) |
+| `docs/specs/{feature}.spec.md` | /duy-workflow:interview | Requirements specification |
+| `docs/PROGRESS.md` | /duy-workflow:execute | Living progress tracking |
+| `.claude/ralph-loop.{PID}.local.md` | /duy-workflow:execute | Ralph state (session-specific) |
+
+---
+
+## Multi-Terminal Support
+
+You can safely run multiple Ralph loops in parallel across different terminals!
+
+**How it works:**
+- Each Claude Code session has a unique Process ID (PID)
+- State files are named `.claude/ralph-loop.{PID}.local.md`
+- Each terminal only affects its own loop
+- `/cancel-ralph --list` shows all active loops
+
+**Example:**
+```bash
+# Terminal 1: Working on auth feature
+/duy-workflow:execute docs/specs/auth.spec.md
+
+# Terminal 2: Working on API feature (simultaneously)
+/duy-workflow:execute docs/specs/api.spec.md
+
+# Check all loops:
+/cancel-ralph --list
+```
+
+**Previous limitation (FIXED):**
+Before this fix, all terminals shared a single `.claude/ralph-loop.local.md` file, causing one terminal's `/cancel-ralph` to kill all loops.
 
 ---
 

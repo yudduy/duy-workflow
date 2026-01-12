@@ -28,10 +28,9 @@ When running multiple agents in parallel, use `--agent-id` to isolate each agent
 Each agent gets:
 - Own git worktree: `.worktrees/agent-{id}/`
 - Own branch: `execution-agent-{id}`
-- Own progress file: `docs/PROGRESS.md` (isolated in worktree)
 - Own Ralph state: `.claude/ralph-loop.local.md` (isolated in worktree)
 
-SPEC.md is copied to each worktree as read-only source of truth.
+Progress is tracked directly in the spec file itself (no shared PROGRESS.md).
 
 ---
 
@@ -157,12 +156,10 @@ if [ -n "$AGENT_ID" ]; then
   exit 0
 fi
 
-# Check for existing progress (single-agent mode)
-if [ -f "docs/PROGRESS.md" ]; then
-  echo ""
-  echo "📋 Existing progress found:"
-  grep -E "COMPLETED|IN_PROGRESS|PENDING" docs/PROGRESS.md | head -10
-fi
+# Check for existing progress in spec file (single-agent mode)
+echo ""
+echo "📋 Current progress:"
+grep -E "COMPLETED|IN_PROGRESS|PENDING" "$SPEC_PATH" | head -10 || echo "   No progress tracked yet"
 ```
 
 ## Initialize Ralph Loop
@@ -182,15 +179,21 @@ if [ -z "$AGENT_ID" ]; then
 You are the orchestrator. You DO NOT write code directly.
 You delegate ALL implementation work to subagents via the Task tool.
 
+## CRITICAL: Stay On Task
+- You are implementing ONLY $SPEC_PATH
+- Progress is tracked IN the spec file itself (not docs/PROGRESS.md)
+- IGNORE any other spec files or progress files
+- DO NOT switch to other tasks or phases
+
 ## Each Iteration:
-1. READ: $SPEC_PATH (requirements), docs/PROGRESS.md (status)
-2. FIND: First PENDING requirement
+1. READ: $SPEC_PATH (requirements AND progress status)
+2. FIND: First PENDING requirement in the spec's progress table
 3. DELEGATE: Use Task tool to spawn implementation subagent:
    - Subagent type: backend-engineer or frontend-engineer (as appropriate)
    - Give it the specific requirement to implement
    - Include relevant file paths and context
 4. VERIFY: Check subagent's work (tests pass, code correct)
-5. UPDATE: Mark requirement COMPLETED in PROGRESS.md
+5. UPDATE: Mark requirement COMPLETED in $SPEC_PATH progress table
 6. REPEAT: Until all requirements done
 
 ## Subagent Prompt Template:
@@ -272,17 +275,27 @@ For each requirement, follow RED → GREEN → REFACTOR:
 
 ## Progress Tracking
 
-After each requirement, update `docs/PROGRESS.md`:
+Progress is tracked **directly in the spec file** (not in a separate PROGRESS.md).
+This prevents cross-contamination when multiple specs are being executed in parallel.
+
+After each requirement, update the progress table at the bottom of the spec file:
 
 ```markdown
-## Requirements Status
+---
+
+## Execution Progress
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
 | REQ-1 | [name] | COMPLETED | [iteration notes] |
 | REQ-2 | [name] | IN_PROGRESS | - |
 | REQ-3 | [name] | PENDING | - |
+
+**Started:** 2026-01-12
+**Last Updated:** 2026-01-12
 ```
+
+If the spec doesn't have a progress section yet, add one at the bottom.
 
 ---
 
@@ -339,9 +352,10 @@ When running as an agent in a worktree:
 
 ## Iron Laws
 
-1. **SPEC is ground truth** - Read it each iteration
-2. **Orchestrate, don't implement** - Delegate to subagents via Task tool
-3. **No code without failing test** - TDD always (subagents follow this)
-4. **Verify before claiming** - Check subagent work, show actual output
-5. **Update progress continuously** - State lives in files
-6. **Do not lie to exit** - Promise must be TRUE
+1. **SPEC is ground truth** - Read it each iteration (requirements + progress)
+2. **Stay on YOUR spec** - Never switch to other specs or phases
+3. **Orchestrate, don't implement** - Delegate to subagents via Task tool
+4. **No code without failing test** - TDD always (subagents follow this)
+5. **Verify before claiming** - Check subagent work, show actual output
+6. **Update progress in spec** - Progress table lives in the spec file itself
+7. **Do not lie to exit** - Promise must be TRUE

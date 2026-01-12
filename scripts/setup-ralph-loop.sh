@@ -50,11 +50,14 @@ STOPPING:
   No manual stop - Ralph runs infinitely by default!
 
 MONITORING:
-  # View current iteration:
-  grep '^iteration:' .claude/ralph-loop.local.md
+  # View current iteration (replace PID with your session PID):
+  grep '^iteration:' .claude/ralph-loop.*.local.md
 
   # View full state:
-  head -10 .claude/ralph-loop.local.md
+  head -10 .claude/ralph-loop.*.local.md
+
+  # List all active loops:
+  /cancel-ralph --list
 HELP_EOF
       exit 0
       ;;
@@ -130,6 +133,11 @@ fi
 # Create state file for stop hook (markdown with YAML frontmatter)
 mkdir -p .claude
 
+# Use PPID for session isolation - each Claude Code process has unique PID
+# All child processes (bash commands, hooks) share this as their PPID
+CLAUDE_SESSION_PID=$PPID
+STATE_FILE=".claude/ralph-loop.${CLAUDE_SESSION_PID}.local.md"
+
 # Quote completion promise for YAML if it contains special chars or is not null
 if [[ -n "$COMPLETION_PROMISE" ]] && [[ "$COMPLETION_PROMISE" != "null" ]]; then
   COMPLETION_PROMISE_YAML="\"$COMPLETION_PROMISE\""
@@ -137,7 +145,7 @@ else
   COMPLETION_PROMISE_YAML="null"
 fi
 
-cat > .claude/ralph-loop.local.md <<EOF
+cat > "$STATE_FILE" <<EOF
 ---
 active: true
 iteration: 1
@@ -153,6 +161,8 @@ EOF
 cat <<EOF
 🔄 Ralph loop activated in this session!
 
+Session PID: $CLAUDE_SESSION_PID
+State file: $STATE_FILE
 Iteration: 1
 Max iterations: $(if [[ $MAX_ITERATIONS -gt 0 ]]; then echo $MAX_ITERATIONS; else echo "unlimited"; fi)
 Completion promise: $(if [[ "$COMPLETION_PROMISE" != "null" ]]; then echo "${COMPLETION_PROMISE//\"/} (ONLY output when TRUE - do not lie!)"; else echo "none (runs forever)"; fi)
@@ -161,7 +171,7 @@ The stop hook is now active. When you try to exit, the SAME PROMPT will be
 fed back to you. You'll see your previous work in files, creating a
 self-referential loop where you iteratively improve on the same task.
 
-To monitor: head -10 .claude/ralph-loop.local.md
+To monitor: head -10 $STATE_FILE
 
 ⚠️  WARNING: This loop cannot be stopped manually! It will run infinitely
     unless you set --max-iterations or --completion-promise.
