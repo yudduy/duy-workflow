@@ -31,7 +31,7 @@ Each agent gets own worktree (`.worktrees/agent-{id}/`) and branch.
 
 ```!
 eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
-echo "Spec: ${SPEC_PATH:-"(auto-detect)"} | Max iterations: $MAX_ITER"
+echo "Spec: ${SPEC_PATH:-(auto-detect)} | Max iterations: $MAX_ITER"
 ```
 
 ## Prerequisites Check
