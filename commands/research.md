@@ -44,7 +44,7 @@ Initialize `docs/research/{topic}/KNOWLEDGE.md`:
 ## Ralph Loop
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/../superpowers/scripts/setup-ralph-loop.sh" \
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
   --max-iterations "${MAX_ITER:-100}" \
   --completion-promise "RESEARCH_EXHAUSTED" \
   "Exhaustively research {topic}. You are a research orchestrator.

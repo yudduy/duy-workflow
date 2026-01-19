@@ -25,7 +25,7 @@ Read `docs/research/{topic}/KNOWLEDGE.md`.
 ## Ralph Loop
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/../superpowers/scripts/setup-ralph-loop.sh" \
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
   --max-iterations "${MAX_ITER:-50}" \
   --completion-promise "MAP_COMPLETE" \
   "Generate exhaustive mind map from docs/research/{topic}/KNOWLEDGE.md.
