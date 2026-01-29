@@ -44,16 +44,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Auto-detect spec path if not provided
-if [[ -z "$SPEC_PATH" ]]; then
-  if [[ -f "docs/SPEC.md" ]]; then
-    SPEC_PATH="docs/SPEC.md"
-  elif [[ -d "docs/specs" ]]; then
-    # Find most recently modified spec
-    SPEC_PATH=$(ls -t docs/specs/*.spec.md 2>/dev/null | head -1)
-  fi
-fi
-
 echo "MAX_ITER=$MAX_ITER"
 echo "AGENT_ID=$AGENT_ID"
 echo "SETUP_ONLY=$SETUP_ONLY"

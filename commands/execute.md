@@ -1,7 +1,7 @@
 ---
-description: Ralph-powered autonomous execution of SPEC.md with TDD
-argument-hint: "[spec-path] [--max-iterations N]"
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/*), Bash(git *)
+description: Ralph-powered autonomous execution of a spec file with TDD
+argument-hint: "<spec-path> [--max-iterations N]"
+allowed-tools: Bash
 ---
 
 # /execute
@@ -11,9 +11,8 @@ Execute a specification using a Ralph loop with subagent delegation.
 ## Usage
 
 ```bash
-/execute                              # Uses docs/SPEC.md or finds latest in docs/specs/
-/execute docs/specs/user-auth.spec.md # Execute specific spec
-/execute --max-iterations 50          # Limit iterations (default: 100)
+/duy-workflow:execute docs/specs/user-auth.spec.md           # Execute specific spec
+/duy-workflow:execute docs/specs/user-auth.spec.md --max-iterations 50  # Limit iterations
 ```
 
 ## Multi-Agent Mode
@@ -39,13 +38,15 @@ echo "Spec: ${SPEC_PATH:-(auto-detect)} | Max iterations: $MAX_ITER"
 ```!
 eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/parse-execute-args.sh" $ARGUMENTS)"
 
-if [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; then
-  echo "❌ No spec file found. Run /interview first."
-  exit 1
+if [ -n "$SPEC_PATH" ] && [ -f "$SPEC_PATH" ]; then
+  echo "✅ Found: $SPEC_PATH"
+  head -20 "$SPEC_PATH" | grep -E "^#|^##|^\*\*" | head -10
+elif [ -n "$SPEC_PATH" ]; then
+  echo "⚠️  Spec path provided but file not found: $SPEC_PATH"
+else
+  echo "ℹ️  No spec path provided. Use conversation context to determine the spec file."
+  ls docs/specs/*.spec.md 2>/dev/null && echo "(specs found above)" || echo "(no specs in docs/specs/)"
 fi
-
-echo "✅ Found: $SPEC_PATH"
-head -20 "$SPEC_PATH" | grep -E "^#|^##|^\*\*" | head -10
 ```
 
 ## Worktree Setup (Multi-Agent Mode)

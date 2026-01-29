@@ -1,5 +1,5 @@
 ---
-description: Deep codebase exploration + structured interview to generate SPEC.md
+description: Deep codebase exploration + structured interview to generate a spec file
 argument-hint: "[feature description]"
 ---
 
@@ -53,7 +53,7 @@ git log --oneline -10 2>/dev/null
 ```markdown
 # Specification: [Feature Name]
 
-> Use `/execute docs/specs/{this-file}.spec.md` to implement.
+> Use `/duy-workflow:execute docs/specs/{this-file}.spec.md` to implement.
 
 ## Goal
 [One sentence]
@@ -84,7 +84,7 @@ git log --oneline -10 2>/dev/null
 
 ## PHASE 4: SPEC VERIFICATION
 
-**Before /execute:** Verify each requirement against reality.
+**Before /duy-workflow:execute:** Verify each requirement against reality.
 
 ### Step 1: SOTA Research
 Parallel Explore subagents for best practices, current docs, pitfalls.
@@ -100,7 +100,7 @@ Present conflicts/gaps found.
 
 **If new issues discovered:** Loop back to Phase 2 (ask clarifying questions via AskUserQuestion), then update spec in Phase 3.
 
-**When clean:** Wait for user confirmation before /execute.
+**When clean:** Wait for user confirmation before /duy-workflow:execute.
 
 ### Step 4: Update Spec
 Add to spec file:
@@ -118,5 +118,5 @@ Add to spec file:
 Spec verified: docs/specs/{feature-name}.spec.md
 - [N] requirements verified against codebase
 - Conflicts: [none or list]
-- Ready for: /execute docs/specs/{feature-name}.spec.md
+- Ready for: /duy-workflow:execute docs/specs/{feature-name}.spec.md
 ```
