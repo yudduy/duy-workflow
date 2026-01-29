@@ -1,5 +1,5 @@
 {
-  "description": "Ralph Wiggum plugin stop hook for self-referential loops",
+  "description": "Ralph Wiggum plugin hooks - stop hook for loops, format-on-save for code quality",
   "hooks": {
     "Stop": [
       {
@@ -7,6 +7,18 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-on-save.sh",
+            "timeout": 10000
           }
         ]
       }
