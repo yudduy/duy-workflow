@@ -1,6 +1,6 @@
 # duy-workflow
 
-Interview-driven spec generation, CLAUDE.md auto-generation, and Ralph-powered autonomous execution for Claude Code.
+Interview-driven spec generation and Ralph-powered autonomous execution for Claude Code.
 
 ## Installation
 
@@ -33,23 +33,25 @@ claude --plugin-dir /path/to/duy-workflow
 
 | Command | Description |
 |---------|-------------|
-| `/duy-workflow:gen-claude-md` | Generate/update CLAUDE.md via parallel exploration agents |
-| `/duy-workflow:interview` | Deep exploration + structured interview → SPEC.md |
+| `/duy-workflow:research` | Deep research with optional `--map` for mind map generation |
+| `/duy-workflow:interview` | Deep exploration + structured interview -> SPEC.md |
 | `/duy-workflow:execute` | Ralph-powered TDD implementation |
-| `/duy-workflow:add-mistake` | Add anti-pattern to CLAUDE.md (compounding engineering) |
+| `/duy-workflow:commit-push-pr` | Quick commit, push, and PR creation |
 | `/duy-workflow:ralph-loop` | Raw Ralph loop (advanced) |
 | `/duy-workflow:cancel-ralph` | Cancel active loop |
-| `/duy-workflow:help` | Show documentation |
 
 ---
 
 ## Quick Start
 
-### For new projects or onboarding:
+### For research:
 
 ```bash
-# Generate CLAUDE.md from codebase exploration
-/duy-workflow:gen-claude-md
+# Deep research on a topic
+/duy-workflow:research "transformer architectures"
+
+# Research with auto-generated mind map
+/duy-workflow:research "transformer architectures" --map
 ```
 
 ### For feature implementation:
@@ -63,11 +65,12 @@ claude --plugin-dir /path/to/duy-workflow
 /duy-workflow:execute --max-iterations 50
 ```
 
-### When Claude makes a mistake:
+### Quick commit workflow:
 
 ```bash
-# Add to anti-patterns so it doesn't happen again
-/duy-workflow:add-mistake "Used deprecated API instead of new one"
+# Commit, push, and create PR in one command
+/duy-workflow:commit-push-pr
+/duy-workflow:commit-push-pr "Add user authentication"
 ```
 
 ---
@@ -77,12 +80,12 @@ claude --plugin-dir /path/to/duy-workflow
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                     │
-│   /gen-claude-md      →     /interview      →      /execute         │
-│   ──────────────            ──────────            ─────────         │
-│   • 5 parallel agents       • Explore codebase    • Ralph loop      │
-│   • Discover patterns       • AskUserQuestion     • Reads SPEC.md   │
-│   • Output: CLAUDE.md       • Web search          • TDD enforced    │
-│                             • Output: SPEC.md     • PROGRESS.md     │
+│   /research           →     /interview      →      /execute         │
+│   ──────────                ──────────            ─────────         │
+│   • Parallel agents         • Explore codebase    • Ralph loop      │
+│   • Web search              • AskUserQuestion     • Reads SPEC.md   │
+│   • KNOWLEDGE.md            • Web search          • TDD enforced    │
+│   • --map for MINDMAP.md    • Output: SPEC.md     • PROGRESS.md     │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -99,22 +102,11 @@ cd .worktrees/agent-1 && claude  # then: /duy-workflow:execute
 cd .worktrees/agent-2 && claude  # then: /duy-workflow:execute
 ```
 
-## Compounding Engineering
-
-Every time Claude makes a project-specific mistake, add it to CLAUDE.md:
-
-```bash
-/duy-workflow:add-mistake "description of what went wrong"
-```
-
-Over time, Claude learns your project's gotchas and avoids repeating mistakes.
-
 ## Based On
 
 - **Ralph Wiggum technique** by Geoffrey Huntley - autonomous iteration via stop hooks
 - **Thariq's interview method** - deep spec generation via AskUserQuestionTool
 - **TDD enforcement** - no code without failing test
-- **Compounding engineering** - document mistakes to prevent repetition
 
 ## Learn More
 

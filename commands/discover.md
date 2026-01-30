@@ -1,12 +1,12 @@
 ---
-description: Ralph-powered scientific discovery - hypothesis generation, layered verification, cross-domain analogy search
+description: Ralph-powered scientific discovery - open-ended hypothesis-verify-research loop until convergence
 argument-hint: "<problem-statement> [--knowledge PATH] [--max-iterations N] [--rigor formal|semi-formal|informal]"
 allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 ---
 
 # /discover
 
-Ralph-powered discovery loop with layered verification. Proposes hypotheses, stress-tests through multiple verification layers, searches across domains for inspiration.
+Open-ended discovery loop. Hypothesizes, web-searches for evidence and counterevidence, stress-tests adversarially, refines, and keeps going until the hypothesis is robust against the known landscape. Not a fixed pipeline — a continuous OODA cycle.
 
 ## Usage
 
@@ -22,63 +22,97 @@ Ralph-powered discovery loop with layered verification. Proposes hypotheses, str
 mkdir -p docs/discoveries/{topic-slug}
 ```
 
-Initialize `docs/discoveries/{topic-slug}/DISCOVERY.md`:
+Create TWO files. The first is the living state document — always reflects what we believe NOW. The second is the append-only research log — never edit past entries, only add new ones.
+
+### File 1: `docs/discoveries/{topic-slug}/DISCOVERY.md` (Current State)
+
+This is the "paper" — synthesized, current, overwritten freely. When the LLM reads this at the start of each iteration, it should immediately understand: what do we believe, what evidence supports it, what's still open.
+
 ```markdown
 # Discovery: {Topic}
+> Status: In Progress | Iteration: 0 | Last updated: {timestamp}
 
-> Started: {timestamp}
-> Rigor: {rigor}
-> Provenance: {knowledge-file-if-any}
+## Problem
+[One paragraph. What are we trying to solve and why.]
 
-## Problem Statement
-[Extracted from conversation context]
+## Landscape (What Exists)
+- **Current SOTA**: [best known approach — CITE source]
+- **Key papers**: [who has worked on this — CITE URLs]
+- **Known limits**: [impossibility results, fundamental constraints — CITE]
+- **Open gaps**: [what hasn't been tried]
 
-## Problem Decomposition
-- Sub-questions: [independent components]
-- Necessary conditions: [what must hold for any solution]
-- Boundary conditions: [constraints, edge cases]
-- Verification approach: [how we'll know if we found something]
+## Current Hypothesis
+- **Statement**: [precise, falsifiable claim]
+- **Confidence**: [0-100]
+- **Status**: Forming | Testing | Candidate | Accepted | Rejected
 
-## Evaluation Criteria
-[What counts as a solution/insight — must be falsifiable]
+### Evidence Supporting
+- [finding — CITE source]
+- [finding — CITE source]
+
+### Evidence Against
+- [counterpoint — CITE source]
+
+### Survived Attacks
+- [verifier critique it addressed]
+- [counterargument it withstood]
+
+### Open Questions
+- [what we still don't know]
+- [what would change our mind]
 
 ## Cross-Domain Analogies
+| Source Domain | Insight | Transfers? | Limitations |
+|---------------|---------|------------|-------------|
 
-| Source Domain | Analogous Concept | Mapping | Insight |
-|---------------|-------------------|---------|---------|
+## Rejected Hypotheses (summary only)
+| Hypothesis | Why Rejected | What We Learned |
+|------------|--------------|-----------------|
 
-## Hypothesis Log
-
-## Verification Results
-
-### Proxy Check Summary
-| Hypothesis | Consistent | Novel | Falsifiable | Literature | Score |
-|------------|-----------|-------|-------------|------------|-------|
-
-### Adversarial Results
-| Hypothesis | Fatal Flaws | Weaknesses | Verdict | Confidence Bet |
-|------------|-------------|------------|---------|----------------|
-
-### Falsification Results
-| Hypothesis | Prediction Tested | Method | Result | Survives? |
-|------------|-------------------|--------|--------|-----------|
-
-## Best Result
-- Hypothesis: [none yet]
-- Confidence: LOW
-- Verification layers passed: 0/4
-- Open Questions: [pending]
-
-## Iteration Summary
-
-| # | Phase | Action | Hypothesis | Verification Layer | Result | Decision |
-|---|-------|--------|------------|--------------------|--------|----------|
-
-## Termination
-- Reason: [pending]
+## Evaluation Criteria
+[What counts as success — must be falsifiable, must improve on SOTA]
 ```
 
-If `--knowledge` flag was provided, read the knowledge file first and incorporate into Problem Statement and Evaluation Criteria.
+### File 2: `docs/discoveries/{topic-slug}/LOG.md` (Append-Only History)
+
+This is the "lab notebook" — chronological, immutable, never edited. Raw observations separated from interpretations.
+
+```markdown
+# Research Log: {Topic}
+> Append-only. Never edit past entries.
+
+---
+## Iteration 1 | {timestamp}
+**Goal**: [what this iteration set out to do]
+
+### Observations (raw — what I found)
+- [observation — CITE source]
+- [observation — CITE source]
+
+### Interpretation (what I think it means)
+[analysis]
+
+### Decision
+- **Action**: HYPOTHESIZE | VERIFY | REFINE | PIVOT | RESEARCH MORE
+- **Rationale**: [why this decision]
+- **Confidence delta**: [did confidence go up or down? by how much?]
+
+### What changed in DISCOVERY.md
+[what was updated in the state document]
+
+---
+```
+
+### Document Rules
+
+1. **DISCOVERY.md is overwritten freely** — always reflects current beliefs. When you update a hypothesis, REPLACE the old one. Don't append.
+2. **LOG.md is append-only** — never edit past iterations. Only add new entries at the bottom.
+3. **Every claim in DISCOVERY.md must have a CITE** — URL, paper, or reference to a LOG.md iteration where the evidence was found.
+4. **Rejected hypotheses get ONE ROW in a table** in DISCOVERY.md — not full entries. The details live in LOG.md.
+5. **Observations ≠ Interpretations** — always separate in LOG.md. Raw findings first, then what you think they mean.
+6. **Each LOG.md entry records what changed** in DISCOVERY.md — so anyone reading the log can reconstruct the state at any point.
+
+If `--knowledge` flag was provided, read the knowledge file first and incorporate into the Landscape section.
 
 ## Ralph Loop
 
@@ -86,247 +120,208 @@ If `--knowledge` flag was provided, read the knowledge file first and incorporat
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
   --max-iterations "${MAX_ITER:-30}" \
   --completion-promise "DISCOVERY_COMPLETE" \
-  "You are a discovery orchestrator. The user's problem statement is in the conversation context above. Read it carefully.
+  "You are a discovery agent. The user's problem statement is in the conversation context above.
+
+You operate in a continuous OODA loop — Observe, Orient, Decide, Act — like a frontier researcher. You do NOT follow a fixed pipeline. You do what a great scientist would do next given the current state of your knowledge.
+
+## TWO DOCUMENTS
+
+You maintain two files in docs/discoveries/{topic-slug}/:
+
+**DISCOVERY.md** — Current state. OVERWRITE freely. Always reflects what you believe NOW.
+- When you update a hypothesis, REPLACE the old content
+- Rejected hypotheses get ONE ROW in the Rejected table, not full entries
+- Every claim must have a CITE (URL, paper, or LOG.md iteration reference)
+
+**LOG.md** — Append-only history. NEVER edit past entries. Only add new iterations at the bottom.
+- Each entry: goal, raw observations (with sources), interpretation (separate section), decision, what changed in DISCOVERY.md
+- Observations and interpretations are ALWAYS in separate sections
+
+At the START of each iteration: READ DISCOVERY.md to understand current state.
+At the END of each iteration: UPDATE DISCOVERY.md with current beliefs, APPEND to LOG.md with what you did.
+
+## CORE PRINCIPLE
+
+Every claim must be GROUNDED in evidence you actually found. WebSearch and WebFetch are your primary tools. Use them aggressively — not just in a research phase but every time you make a claim, check for counterevidence, or assess novelty.
+
+You are not just thinking. You are RESEARCHING. There is a difference.
 
 ## REASONING PROTOCOL
 
-For ALL reasoning in this pipeline:
-1. STATE the claim explicitly
-2. LIST assumptions required
-3. ASSESS evidence for and against
-4. IDENTIFY the weakest link
-5. RATE your confidence 0-100. Below 60, flag as uncertain.
+For ALL reasoning:
+1. STATE the claim
+2. CITE the evidence (URL, paper, or LOG.md iteration)
+3. ASSESS: primary source or inference?
+4. RATE confidence 0-100. Below 60 = go research it before proceeding.
 
-When combining insights from multiple sources:
-- Reference earlier conclusions by number
-- Explicitly note contradictions with earlier conclusions
-- Revise earlier conclusions when warranted
+## FIRST ITERATION: Map the Landscape
 
-## DISCOVERY PIPELINE
+Before hypothesizing, understand what exists:
 
-Update docs/discoveries/{topic-slug}/DISCOVERY.md after each phase.
+1. WebSearch the problem space extensively:
+   - Current state of the art?
+   - Key researchers and recent publications?
+   - Known impossibility results or fundamental limits?
+   - Approaches tried and failed? Why?
+2. Fill in Landscape section of DISCOVERY.md with CITED findings
+3. Fill in Evaluation Criteria — what constitutes improvement over SOTA?
 
-### Phase 1: Problem Formulation
-- READ DISCOVERY.md for current state
-- If first iteration: parse problem, define scope, write Evaluation Criteria
-- If resuming: read hypothesis log, identify what to try next
-- If knowledge file provided: READ it, extract concepts, methods, gaps
+Use parallel Task (Explore) agents:
+- Agent 1: Current SOTA and recent papers (WebSearch + WebFetch)
+- Agent 2: Known impossibility results and fundamental limits
+- Agent 3: Failed approaches and why they failed
 
-Decompose before proceeding:
-- What are the independent sub-questions?
-- What must be true for ANY solution to work?
-- What are the boundary conditions and constraints?
-- What type of verification is possible for this problem? Choose the strongest available:
-  (a) Formal proof / code execution — use if the claim is mathematical or algorithmic
-  (b) Statistical falsification — use if the claim makes measurable predictions
-  (c) Multi-agent panel — use for open-ended claims where (a) and (b) are not possible
-  Write the chosen verification approach into DISCOVERY.md Problem Decomposition section.
+Only after the landscape is mapped, proceed to hypothesize.
 
-### Phase 2: Cross-Domain Analogy Search
-Map the problem abstract structure to other domains. Use parallel Task (Explore) subagents.
+## CROSS-DOMAIN ANALOGY SEARCH
 
-Run at least 3 agents in parallel across DIFFERENT domains:
+Map the problem's abstract structure to other domains. Run parallel Explore agents across at least 3 unrelated fields:
+- What is the analogous problem?
+- How was it solved?
+- What is the key transferable insight?
+- What breaks when you try to transfer it?
 
-ANALOGY AGENT PROMPT:
-You are researching {domain} for analogous problems to: {abstract structure}.
-1. What is the analogous problem in {domain}?
-2. How was it solved? What is the canonical solution?
-3. What is the KEY INSIGHT that makes the solution work?
-4. How does that insight MAP BACK to the original problem?
-5. What breaks when you try to transfer it? What assumptions differ?
-Return: domain, analogous concept, solution insight, mapping, transfer limitations.
+WebSearch in each domain — do not rely on what you already know.
 
-Add findings to the Cross-Domain Analogies table.
-If no analogies found: log it, proceed from first principles.
+## CONTINUOUS OODA CYCLE
 
-### Phase 3: Hypothesis Generation (Tree-of-Thought)
-Generate 3 candidate hypotheses INDEPENDENTLY:
-- For each, trace the FULL reasoning chain (Chain-of-Thought)
-- Rate each on promise (1-10)
-- For each, identify: where would this fail? what is the weakest assumption?
-- Select the most promising and develop it fully
+Each iteration, decide what the most productive next action is:
 
-For the selected hypothesis, write:
-(a) Formal Statement: precise, falsifiable claim
-(b) Assumptions: numbered list, each with justification and confidence (0-100)
-(c) Predicted Consequences: what this predicts that ALTERNATIVES DO NOT
-(d) Kill Condition: what specific evidence would DISPROVE this
-(e) Testable Implications: concrete predictions that can be checked
+### IF you don't have a hypothesis yet:
+- Synthesize landscape + analogies into a candidate
+- Generate 3 candidates independently (Tree-of-Thought)
+- For each: trace reasoning chain, rate promise 1-10, identify weakest assumption
+- Select the most promising
+- Write it up: formal statement, assumptions (each with confidence 0-100), predictions that discriminate it from alternatives, kill condition
 
-Rigor levels (adaptive by default):
-- formal: structured logic, symbolic notation, explicit axioms
-- semi-formal: clear reasoning chains, explicit assumptions
-- informal: intuitive arguments, analogies, thought experiments
-- adaptive: informal in Phase 2, configured rigor in Phase 3, formal in Phase 4
-
-Add hypothesis to the Hypothesis Log.
-
-### Phase 4: LAYERED VERIFICATION
-
-Each hypothesis passes through verification layers in order. A hypothesis that fails an earlier layer does not proceed to later layers. Record ALL results in the Verification Results section of DISCOVERY.md.
-
-#### Layer 1: Proxy Checks (orchestrator does this directly, fast and cheap)
-
-Check these properties and record pass/fail for each:
-
-(a) INTERNAL CONSISTENCY: Does the hypothesis contradict itself? Do the assumptions conflict? Does the conclusion follow from the premises?
-
-(b) NOVELTY: Is this actually new? Or is it a restatement of something well-known? WebSearch the core claim to check.
-
-(c) FALSIFIABILITY: Does the hypothesis make predictions that could be proven wrong? If not, it is not a scientific hypothesis. Reject.
-
-(d) LITERATURE CONSISTENCY: Does this contradict well-established results? WebSearch for contradicting evidence. If contradicted, note the specific contradiction.
-
-(e) PARSIMONY: Is there a simpler explanation? If yes, the hypothesis must explain why the simpler version is insufficient.
-
-Score: count of checks passed out of 5. Record in Proxy Check Summary table.
-If score < 3: REJECT immediately (do not proceed to Layer 2). PIVOT to new hypothesis.
-
-#### Layer 2: Adversarial Stress-Test (separate subagent)
-
-Delegate to a VERIFIER subagent via Task tool. Use this EXACT prompt structure:
+### IF you have a hypothesis and haven't stress-tested it:
+- Delegate to an adversarial VERIFIER subagent via Task tool:
 
 VERIFIER PROMPT:
-A colleague (not present) submitted this hypothesis for peer review. Give your honest critical assessment.
-
-You have FULL PERMISSION to reject, disagree with, or fundamentally challenge any claim presented to you. Disagreement is valued more than agreement.
+A colleague (not present) submitted this hypothesis for peer review.
+You have FULL PERMISSION to reject it entirely. Disagreement is valued.
 
 HYPOTHESIS: {formal statement}
-ASSUMPTIONS: {numbered list}
-ARGUMENT: {proof/reasoning}
+ASSUMPTIONS: {list}
+ARGUMENT: {reasoning}
 PREDICTIONS: {what this predicts that alternatives do not}
 
-Before stating your assessment, you MUST complete these steps IN ORDER:
-1. State the STRONGEST argument AGAINST this hypothesis
-2. For each stated assumption: is it justified? Find at least one unstated assumption.
-3. Identify the WEAKEST LINK in the reasoning chain
-4. Propose a SIMPLER alternative explanation
-5. Assess: do the stated predictions actually DISCRIMINATE this hypothesis from the alternative?
-6. Construct a specific COUNTEREXAMPLE (or explain rigorously why none exists)
-7. Rate: how many tokens would you BET that each flaw you found is genuine? (1000 = low confidence in the flaw, 40000 = certain the flaw is real)
+You MUST:
+1. WebSearch for evidence that CONTRADICTS this hypothesis
+2. WebSearch for existing work that already does what this proposes (is it actually novel?)
+3. State the strongest argument AGAINST
+4. Find the weakest link in the reasoning chain
+5. Propose a simpler alternative explanation
+6. Construct a specific counterexample or explain why none exists
+7. For each flaw: rate confidence 0-100 that this flaw is genuine
 
-Output format:
-FATAL FLAWS: [issues that invalidate the hypothesis entirely]
-WEAKNESSES: [issues that weaken but do not invalidate]
-MISSING: [analysis needed to evaluate properly]
-ALTERNATIVE: [a simpler or better-supported explanation]
-CONFIDENCE BETS: [token amounts per flaw — high bets = high confidence flaws]
-VERDICT: REJECT / REVISE / PROVISIONALLY_ACCEPT
-If genuinely no substantive flaw found: NO_FLAWS_FOUND
+FATAL FLAWS: [invalidating issues with evidence]
+WEAKNESSES: [non-fatal issues]
+MISSING: [what evidence would you need to see?]
+EVIDENCE FOUND: [what did your web searches turn up?]
+VERDICT: REJECT / REVISE / ACCEPT
 
-Do not praise the work. Do not hedge. Base response only on evidence and logic.
+Do not praise. Do not hedge. CITE your sources.
 
-Record the verifier output. Pay special attention to HIGH-BET flaws (40000+ tokens) — these are the most likely to be genuine.
-If VERDICT is REJECT: PIVOT. Do not refine a fatally flawed hypothesis.
-If VERDICT is REVISE: proceed to Layer 3 only after refinement.
-If VERDICT is PROVISIONALLY_ACCEPT or NO_FLAWS_FOUND: proceed to Layer 3.
+- Record ALL verifier output in DISCOVERY.md under the hypothesis entry
 
-#### Layer 3: Falsification Attempt (strongest available method)
+### IF the verifier found flaws:
+- For FATAL FLAWS: decide between REFINE and PIVOT
+  - Before deciding: WebSearch the specific flaw. Is it a real constraint or a misunderstanding?
+  - If the flaw is grounded in real evidence: PIVOT to a new direction informed by what you learned
+  - If the flaw was based on incorrect assumptions by the verifier: REFINE with evidence
+- For WEAKNESSES: REFINE the hypothesis to address them
+- After refinement: go back to stress-testing (do NOT skip re-verification)
 
-Based on the verification approach chosen in Phase 1:
+### IF the verifier found NO flaws:
+- Do NOT accept yet. Instead:
+  1. WebSearch for the STRONGEST possible counterargument yourself
+  2. Search for existing work that subsumes or contradicts your hypothesis
+  3. Try to construct a counterexample yourself
+  4. Run the verifier AGAIN with a different framing (domain skeptic):
 
-IF formal proof / code execution is possible:
-- Write the claim as executable code or a formal statement
-- Run it via Bash tool
-- The result is deterministic: PASS or FAIL
-- Record in Falsification Results table
+SKEPTIC PROMPT:
+You are an expert in {relevant domain} known for skepticism toward {claim type}.
+A junior researcher asks your honest opinion on:
+HYPOTHESIS: {hypothesis}
+WebSearch for evidence AGAINST this. What would convince you? What is the most likely way this fails in practice? Be direct.
 
-IF statistical falsification is possible (claim makes measurable predictions):
-- Identify 2-3 specific, measurable implications of the hypothesis
-- For each implication, design a test:
-  - What data would confirm it? What data would refute it?
-  - Search for existing data/evidence (WebSearch, literature)
-  - Assess: does the evidence support or refute the implication?
-- Score: implications supported / implications tested
-- Record in Falsification Results table
+  5. Only if BOTH verifiers and your own search found nothing: mark as CANDIDATE
 
-IF neither is possible (open-ended claim):
-- Run a SECOND verifier subagent with a DIFFERENT framing:
+### IF you have a CANDIDATE hypothesis:
+- One more round: WebSearch for the most recent papers (last 6 months) in this space
+- Check: has someone already published this? Is it actually novel?
+- Check: does it actually improve on the SOTA you documented in the Landscape section?
+- If yes to novelty and improvement: mark ACCEPTED
+- If no: document what you found and refine or pivot
 
-SECOND VERIFIER PROMPT:
-You are an expert in {relevant domain} known for your skepticism toward {the type of claim being made}. Your methodology emphasizes {empirical evidence / formal rigor / practical feasibility}.
+## WHAT TO DO EVERY ITERATION
 
-A junior researcher asks for your honest opinion on this hypothesis:
-{hypothesis}
+Regardless of which branch above you're in:
+1. READ DISCOVERY.md for current state
+2. Do the action described above
+3. UPDATE DISCOVERY.md — the Iteration Log must have an entry for every iteration
+4. UPDATE the hypothesis entry with any new evidence, critiques, or refinements
+5. ASSESS: am I making progress or spinning? (honestly)
 
-You have published extensively on why claims like this often fail. What do you think? Be direct. Do not soften your assessment.
+## WHEN TO STOP
 
-Focus on: what would you need to see to be convinced? What is the most likely way this fails in practice?
+This is an OPEN-ENDED loop. You keep going until one of:
 
-- Record the second verifier result
-- If BOTH verifiers return NO_FLAWS_FOUND: hypothesis passes Layer 3
-- If either finds flaws: record and decide refine vs pivot
+A. ROBUST HYPOTHESIS: Your hypothesis has survived:
+   - At least 2 adversarial verifier rounds (different framings)
+   - Your own counterargument search
+   - Novelty check against recent literature
+   - Confirmation it improves on documented SOTA
+   Mark ACCEPTED. Confidence = HIGH.
 
-Record all Layer 3 results in Falsification Results table.
+B. EXHAUSTED LANDSCAPE: You have thoroughly searched and cannot find a viable hypothesis.
+   - Document what you tried and why each failed
+   - Document what the remaining open questions are
+   - Confidence = LOW. This is a valid outcome — knowing what doesn't work is valuable.
 
-#### Layer 4: Confidence Calibration (orchestrator synthesis)
+C. MAX ITERATIONS: Safety valve at --max-iterations (default 30).
+   - Pick the best hypothesis so far with honest confidence assessment.
 
-After all verification layers, the orchestrator synthesizes:
-- How many layers did this hypothesis pass? (out of 3 active layers)
-- What was the highest-confidence flaw found? (from token bets)
-- What is the overall confidence?
-
-Confidence mapping:
-- Passed all 3 layers + deterministic verification: VERY HIGH
-- Passed all 3 layers with LLM-only verification: HIGH
-- Passed layers 1-2 but mixed results on layer 3: MEDIUM
-- Failed any layer: LOW (but may still be the best available)
-
-Update Best Result section with layers passed and confidence.
-
-### Phase 5: Refinement or Pivot
-
-Based on layered verification results:
-- If FATAL FLAWS from any layer: PIVOT (try new direction informed by the specific failure)
-- If WEAKNESSES only (no fatal flaws): REFINE (address the specific weaknesses found)
-- If passed all layers: mark CANDIDATE. Run full verification stack AGAIN next iteration (need 2 consecutive passes for ACCEPTED status)
-
-Before deciding refine vs pivot:
-- Strongest argument FOR pivoting: [generate this]
-- Strongest argument FOR refining: [generate this]
-- Choose based on which argument is stronger, not on sunk cost.
-
-Log decision in Iteration Summary table with verification layer that triggered the decision.
-
-## STOP CONDITIONS
-
-A. VERIFIED: Hypothesis passed ALL verification layers on TWO consecutive iterations.
-   Mark ACCEPTED. Confidence from Layer 4. Log reason and layers passed.
-
-B. MAX ITERATIONS reached.
-   Pick hypothesis with highest layer-pass count. Confidence from Layer 4. Log reason.
-
-C. DIMINISHING RETURNS: 3+ substantially similar hypotheses generated (self-assessed).
-   Log honestly. Pick best. Confidence = MEDIUM at most. Log reason.
+D. DIMINISHING RETURNS: 3+ iterations where you learned nothing new.
+   - Be honest about this. Log it.
 
 When ANY stop condition triggers:
-1. Update Best Result with final hypothesis, confidence, layers passed
-2. Update Termination with reason
-3. List all open questions and unresolved flaws
-4. Output: <promise>DISCOVERY_COMPLETE</promise>
+1. Update Best Result with: hypothesis, confidence, what attacks it survived, open questions
+2. Update Termination with reason and robustness assessment
+3. Output: <promise>DISCOVERY_COMPLETE</promise>
 
 ## ANTI-CIRCUMVENTION
-- Do NOT output the promise until a stop condition is genuinely met
-- Do NOT skip verification layers — every hypothesis goes through Layer 1 and Layer 2 minimum
-- Do NOT accept on first full pass — require TWO consecutive
-- Do NOT self-critique as a substitute for the verifier subagent
-- The verifier is a SEPARATE agent — delegate via Task tool, do not simulate its response
-- If stuck: try a radically different approach, different domain analogy, or decompose further
-- Track duplicate hypotheses honestly — similar hypotheses count toward diminishing returns
-- HIGH-BET flaws (40000+ tokens) from verifiers should be treated as likely genuine"
+- Do NOT output the promise prematurely — the hypothesis must have survived real scrutiny
+- Do NOT skip web searching — EVERY claim must be grounded in evidence you found
+- Do NOT simulate the verifier — delegate via Task tool to a SEPARATE agent
+- Do NOT accept after one verification round — minimum 2 adversarial rounds with different framings
+- Do NOT claim novelty without searching for existing work
+- Do NOT ignore verifier flaws — address each one explicitly
+- If stuck: WebSearch for a completely different approach. Try a new cross-domain analogy. Ask the user for direction.
+- Track what you actually learned each iteration — if the Iteration Log shows no new information for 3+ rounds, trigger stop condition D"
 ```
 
-## Parallel Agent Templates
+## Agent Templates
+
+### Landscape Agent
+```
+Task (Explore): "Research the current state of {problem domain}:
+- WebSearch: '{topic} state of the art 2024 2025'
+- WebSearch: '{topic} impossibility theorem limits'
+- WebSearch: '{topic} failed approaches why'
+- For top results: WebFetch and read abstracts/methodology
+Return: SOTA summary, key papers with URLs, known limits, failed approaches"
+```
 
 ### Analogy Agent
 ```
-Task (Explore): "Find analogous solved problems to: {abstract problem structure}.
-Search in {domain} (e.g., physics, biology, economics, control theory).
-- What is the analogous problem in this field?
-- How was it solved?
-- What is the key insight that transfers?
+Task (Explore): "Find analogous solved problems in {domain}:
+- WebSearch: '{abstract structure} {domain}'
+- What is the analogous problem? How was it solved?
+- What is the key transferable insight?
 - What breaks when you try to transfer it?
-Return: domain, concept, mapping, transferable insight, transfer limitations"
+Return: analogy, mapping, insight, limitations — with URLs"
 ```
 
 ### Adversarial Verifier Agent
@@ -334,24 +329,23 @@ Return: domain, concept, mapping, transferable insight, transfer limitations"
 Task (general-purpose): "A colleague (not present) submitted this for peer review:
 HYPOTHESIS: {formal statement}
 ASSUMPTIONS: {list}
-ARGUMENT: {proof/reasoning}
-PREDICTIONS: {discriminating predictions}
+ARGUMENT: {reasoning}
 
 You have full permission to reject this entirely.
-Before assessing: state the strongest argument AGAINST.
-For each flaw found: how many tokens (1000-40000) would you bet it is genuine?
-Find: fatal flaws, weaknesses, missing analysis, simpler alternatives.
-If genuinely no flaws: output NO_FLAWS_FOUND
-Do not praise. Be direct."
+WebSearch for CONTRADICTING evidence. WebSearch for EXISTING work that already does this.
+State the strongest argument AGAINST. Construct a counterexample.
+For each flaw: rate confidence 0-100.
+CITE your sources. Do not praise. Be direct.
+VERDICT: REJECT / REVISE / ACCEPT"
 ```
 
-### Domain Skeptic Verifier Agent
+### Domain Skeptic Agent
 ```
-Task (general-purpose): "You are an expert in {domain} known for skepticism toward {claim type}.
-A junior researcher asks your honest opinion on:
-HYPOTHESIS: {hypothesis}
-What would convince you? What is the most likely way this fails?
-Be direct. Do not soften your assessment."
+Task (general-purpose): "You are an expert in {domain} known for skepticism.
+A junior researcher asks your opinion on: {hypothesis}
+WebSearch for evidence AGAINST this.
+What would convince you? Most likely way this fails?
+Be direct. CITE sources."
 ```
 
 ## Output
@@ -361,8 +355,8 @@ After completion:
 Discovery complete: docs/discoveries/{topic-slug}/DISCOVERY.md
 - Hypotheses explored: {N}
 - Best hypothesis: {name}
-- Confidence: {VERY HIGH|HIGH|MEDIUM|LOW}
-- Verification layers passed: {N}/3
+- Confidence: {HIGH|MEDIUM|LOW}
+- Survived: {list of attacks/verifications it passed}
 - Termination: {reason}
 ```
 
