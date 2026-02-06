@@ -153,20 +153,16 @@ You maintain an evolving strategy playbook that accumulates verification heurist
 
 ## TWO DOCUMENTS
 
-You maintain two files in docs/discoveries/{topic-slug}/:
+Follow Document Rules above. Additionally:
 
-**DISCOVERY.md** — Current state. OVERWRITE freely. Always reflects what you believe NOW.
-- When you update a hypothesis, REPLACE the old content
-- Rejected hypotheses get ONE ROW in the Rejected table, not full entries
-- Every claim must have a CITE (URL, paper, or LOG.md iteration reference)
-- Contains inline **## Playbook** section: hierarchical strategy playbook (5 families max, 3 entries each, 15 total max). Update via deltas (append/increment/decrement/remove). Each entry: {ID, +/-counter, content, evidence}. Highest-counter families at top and bottom (primacy/recency).
-- Contains inline **## Tried** section: tried-and-failed registry. NOT a permanent block — cooldown with context-change gate. Entries expire after 5 iterations OR when >= 2 new playbook heuristics added since failure. On re-entry, state what changed.
+**DISCOVERY.md** — Current state. OVERWRITE freely.
+- **Playbook**: 5 families max, 3 entries each, 15 total. Each entry: {ID, +/-counter, content, evidence}. Update via deltas (append/increment/decrement/remove). Highest-counter families at top and bottom (primacy/recency).
+- **Tried**: cooldown-gated registry. Entries expire after 5 iterations OR when 2+ new heuristics added since failure. On re-entry, state what changed.
 
-**LOG.md** — Append-only history. NEVER edit past entries. Only add new iterations at the bottom.
-- Each entry: goal, raw observations (with sources), interpretation (separate section), reflector output, decision, what changed in DISCOVERY.md
+**LOG.md** — Append-only. Each entry: goal, observations (with sources), interpretation (separate section), reflector output, decision, what changed in DISCOVERY.md.
 
-At the START of each iteration: READ DISCOVERY.md (including 2-3 entries from the Playbook section — from DIFFERENT strategy families — do NOT read the full Playbook section).
-At the END of each iteration: UPDATE DISCOVERY.md (including Playbook/Tried sections), APPEND to LOG.md, delegate Reflector for playbook update.
+Each iteration START: READ DISCOVERY.md + 2-3 Playbook entries (from DIFFERENT families — selective retrieval, not full section).
+Each iteration END: UPDATE DISCOVERY.md (including Playbook/Tried), APPEND to LOG.md, delegate Reflector.
 
 ## CORE PRINCIPLE
 
@@ -232,14 +228,9 @@ Before hypothesizing or conjecturing, check the tried-and-failed registry. If yo
 ### IF you have a hypothesis and haven't stress-tested it:
 - Delegate to an adversarial VERIFIER subagent via Task tool:
 
-VERIFIER PROMPT:
-A colleague (not present) submitted this hypothesis for peer review.
-You have FULL PERMISSION to reject it entirely. Disagreement is valued.
-
-HYPOTHESIS: {formal statement}
-ASSUMPTIONS: {list}
-ARGUMENT: {reasoning}
-PREDICTIONS: {what this predicts that alternatives do not}
+VERIFIER PROMPT (delegate via Task, general-purpose):
+A colleague submitted this hypothesis for peer review. You have FULL PERMISSION to reject it entirely.
+HYPOTHESIS: {formal statement} | ASSUMPTIONS: {list} | ARGUMENT: {reasoning} | PREDICTIONS: {what this predicts that alternatives do not}
 
 You MUST:
 1. WebSearch for evidence that CONTRADICTS this hypothesis
@@ -248,24 +239,14 @@ You MUST:
 4. Find the weakest link in the reasoning chain
 5. Propose a simpler alternative explanation
 6. Construct a specific counterexample or explain why none exists
-7. For each flaw: rate confidence 0-100 that this flaw is genuine
+7. For each flaw: rate confidence 0-100
 
-GROUNDING REQUIREMENT: Every critique must provide EITHER:
-(a) A web-searched citation supporting the critique, OR
-(b) A specific logical contradiction with references (e.g., 'claim X contradicts claim Y because...')
-Critiques without either are marked UNGROUNDED and do not trigger refinement.
+GROUNDING REQUIREMENT: Every critique must provide EITHER (a) a web-searched citation, OR (b) a specific logical contradiction with references. Ungrounded critiques are flagged but do NOT trigger refinement.
 
-FATAL FLAWS: [invalidating issues with evidence]
-WEAKNESSES: [non-fatal issues]
-MISSING: [what evidence would you need to see?]
-EVIDENCE FOUND: [what did your web searches turn up?]
-UNGROUNDED: [critiques that lack citation or logical contradiction — flagged but do not trigger refinement]
-VERDICT: REJECT / REVISE / ACCEPT
-
+Output: FATAL FLAWS | WEAKNESSES | MISSING | EVIDENCE FOUND | UNGROUNDED | VERDICT (REJECT/REVISE/ACCEPT)
 Do not praise. Do not hedge. CITE your sources.
 
 - Record ALL verifier output in DISCOVERY.md under the hypothesis entry
-- UNGROUNDED critiques are logged but do NOT trigger hypothesis refinement
 
 ### IF the verifier found GROUNDED flaws:
 - For FATAL FLAWS: decide between REFINE and PIVOT
@@ -282,12 +263,11 @@ Do not praise. Do not hedge. CITE your sources.
   3. Try to construct a counterexample yourself
   4. Run the verifier AGAIN with a different framing (domain skeptic):
 
-SKEPTIC PROMPT:
+SKEPTIC PROMPT (delegate via Task, general-purpose):
 You are an expert in {relevant domain} known for skepticism toward {claim type}.
-A junior researcher asks your honest opinion on:
-HYPOTHESIS: {hypothesis}
-WebSearch for evidence AGAINST this. What would convince you? What is the most likely way this fails in practice? Be direct.
-GROUNDING REQUIREMENT: Every critique must be backed by citation or logical contradiction.
+A junior researcher asks your honest opinion on: HYPOTHESIS: {hypothesis}
+WebSearch for evidence AGAINST this. What would convince you? Most likely way this fails in practice?
+GROUNDING REQUIREMENT: Every critique must be backed by citation or logical contradiction. Be direct.
 
   5. Only if BOTH verifiers and your own search found nothing grounded: mark as CANDIDATE
 
@@ -304,37 +284,20 @@ GROUNDING REQUIREMENT: Every critique must be backed by citation or logical cont
 
 ## REFLECTOR SUBAGENT
 
-After EVERY iteration (regardless of which OODA branch), delegate a Reflector:
+After EVERY iteration, delegate a Reflector (Task, general-purpose):
 
-REFLECTOR PROMPT:
-You are a strategy analyst reviewing a discovery iteration.
+Input: iteration summary (goal, key findings, evidence URLs, verification outcome, confidence delta) + current Playbook + Tried sections.
 
-ITERATION SUMMARY:
-- Goal: {what this iteration aimed to do}
-- Key findings: {1-2 sentences}
-- Evidence found: {URLs}
-- Verification outcome: {what verifiers said, if applicable}
-- Confidence delta: {up or down, by how much}
+Job:
+1. What verification tactic worked or failed? → Update Verification Tactics family
+2. What search strategy yielded useful evidence? → Update Search Strategies family
+3. What hypothesis structure was robust or fragile? → Update Hypothesis Patterns family
+4. Increment/decrement/remove existing entries as warranted
+5. Expire Tried entries whose cooldown has passed
 
-CURRENT PLAYBOOK: {full Playbook section from DISCOVERY.md}
-CURRENT TRIED: {full Tried section from DISCOVERY.md}
-
-Your job:
-1. What verification tactic worked or failed this iteration? Update Verification Tactics family.
-2. What search strategy yielded useful evidence? Update Search Strategies family.
-3. What structural feature of the hypothesis made it robust or fragile? Update Hypothesis Patterns family.
-4. Should any existing entry be incremented, decremented, or removed?
-5. Are there Tried section entries whose cooldown has expired?
-
-Output:
-PLAYBOOK_DELTA:
-- ADD: {family} | {entry text} | {evidence}
-- INCREMENT: {entry ID}
-- DECREMENT: {entry ID}
-- REMOVE: {entry ID} | {reason}
-TRIED_DELTA:
-- ADD: {approach} | {why failed} | {playbook state}
-- EXPIRE: {entry} | {reason}
+Output format:
+PLAYBOOK_DELTA: ADD {family}|{entry}|{evidence} / INCREMENT {ID} / DECREMENT {ID} / REMOVE {ID}|{reason}
+TRIED_DELTA: ADD {approach}|{why failed}|{playbook state} / EXPIRE {entry}|{reason}
 SUMMARY: [one sentence — what did we learn about HOW to discover in this domain?]
 
 Write to PLAYBOOK_PENDING.md. Main loop applies on next iteration.
@@ -350,24 +313,21 @@ After 3+ CONSECUTIVE iterations with no new substantive findings or progress:
 
 ## WHAT TO DO EVERY ITERATION
 
-Regardless of which branch above you're in:
-1. READ DISCOVERY.md for current state
-2. READ 2-3 entries from the Playbook section of DISCOVERY.md (from different strategy families — selective retrieval)
-3. CHECK the Tried section of DISCOVERY.md for cooldown-gated approaches
-4. DEFIXATE — restate success criteria abstractly
-5. Do the action described above
-6. UPDATE DISCOVERY.md with current beliefs
-7. APPEND to LOG.md with what you did
-8. DELEGATE Reflector subagent for playbook update
-9. ASSESS: am I making progress or spinning? (honestly)
+1. READ DISCOVERY.md + 2-3 Playbook entries (from different strategy families — selective retrieval)
+2. CHECK the Tried section for cooldown-gated approaches
+3. DEFIXATE — restate success criteria abstractly, without referencing past strategies
+4. Execute the appropriate OODA branch above
+5. UPDATE DISCOVERY.md with current beliefs
+6. APPEND to LOG.md with what you did
+7. DELEGATE Reflector subagent for playbook update
+8. ASSESS: am I making progress or spinning? (honestly)
 
 ## PRUNE CYCLE (every 5 iterations)
 
-The Reflector also does a full playbook review:
+Reflector does a full playbook review:
 - Remove entries with score <= 0
 - If families exceed 5, remove lowest-total-score family
-- Summarize oldest Tried section entries if over 20
-- Re-rank families by total score (highest at top and bottom for primacy/recency)
+- Re-rank by total score (highest at top and bottom for primacy/recency)
 - Abstract high-counter heuristics into family-level descriptions, freeing slots
 
 ## WHEN TO STOP
@@ -407,71 +367,6 @@ When ANY stop condition triggers:
 - Do NOT re-try a failed approach without checking Tried section cooldown
 - If stuck: try incubation protocol first, then WebSearch for a completely different approach, then ask the user for direction.
 - Track what you actually learned each iteration — if the Iteration Log shows no new information for 3+ rounds, trigger incubation then stop condition D"
-```
-
-## Agent Templates
-
-### Landscape Agent
-```
-Task (Explore): "Research the current state of {problem domain}:
-- WebSearch: '{topic} state of the art 2024 2025'
-- WebSearch: '{topic} impossibility theorem limits'
-- WebSearch: '{topic} failed approaches why'
-- For top results: WebFetch and read abstracts/methodology
-Return: SOTA summary, key papers with URLs, known limits, failed approaches"
-```
-
-### Analogy Agent
-```
-Task (Explore): "Find analogous solved problems in {domain}:
-- WebSearch: '{abstract structure} {domain}'
-- What is the analogous problem? How was it solved?
-- What is the key transferable insight?
-- What breaks when you try to transfer it?
-Return: analogy, mapping, insight, limitations — with URLs"
-```
-
-### Adversarial Verifier Agent
-```
-Task (general-purpose): "A colleague (not present) submitted this for peer review:
-HYPOTHESIS: {formal statement}
-ASSUMPTIONS: {list}
-ARGUMENT: {reasoning}
-
-You have full permission to reject this entirely.
-WebSearch for CONTRADICTING evidence. WebSearch for EXISTING work that already does this.
-State the strongest argument AGAINST. Construct a counterexample.
-GROUNDING REQUIREMENT: Every critique must have a web citation or identify a specific logical contradiction.
-For each flaw: rate confidence 0-100.
-CITE your sources. Do not praise. Be direct.
-VERDICT: REJECT / REVISE / ACCEPT"
-```
-
-### Domain Skeptic Agent
-```
-Task (general-purpose): "You are an expert in {domain} known for skepticism.
-A junior researcher asks your opinion on: {hypothesis}
-WebSearch for evidence AGAINST this.
-GROUNDING REQUIREMENT: Back every critique with citation or logical contradiction.
-What would convince you? Most likely way this fails?
-Be direct. CITE sources."
-```
-
-### Reflector Agent
-```
-Task (general-purpose): "You are a strategy analyst reviewing a discovery iteration.
-ITERATION SUMMARY: {goal, findings, evidence URLs, verification outcome, confidence delta}
-CURRENT PLAYBOOK: {full Playbook section from DISCOVERY.md}
-CURRENT TRIED: {full Tried section from DISCOVERY.md}
-
-Produce delta updates:
-1. What verification tactic worked/failed? Update Verification Tactics family.
-2. What search strategy yielded evidence? Update Search Strategies family.
-3. What hypothesis structure was robust/fragile? Update Hypothesis Patterns family.
-4. Any entries to increment/decrement/remove?
-5. Any Tried entries with expired cooldown?
-
-Output: PLAYBOOK_DELTA, TRIED_DELTA, SUMMARY"
 ```
 
 ---

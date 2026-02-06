@@ -243,49 +243,6 @@ Rules for mind map:
 - No orphan nodes (everything connected)
 - Learning path reflects actual dependencies
 
-## Parallel Agent Templates
-
-### Literature Agent
-```
-Task (Explore): "Find papers on {subtopic}:
-- WebSearch: '{subtopic} paper arxiv'
-- For top 5 results: WebFetch abstract and contributions
-- Return: title, authors, year, key contribution, URL"
-```
-
-### Concepts Agent
-```
-Task (Explore): "Define {concept}:
-- Find 2+ authoritative sources
-- Extract precise definition
-- Note related concepts and any contradictory definitions across sources
-- Return: definition, sources, connections, contradictions (if any)"
-```
-
-### Implementations Agent
-```
-Task (Explore): "Find implementations of {method}:
-- WebSearch: '{method} github implementation'
-- Verify repos exist and are maintained
-- Return: name, language, stars, last updated, URL"
-```
-
-### Gaps Agent
-```
-Task (Explore): "Identify gaps in {area}:
-- WebSearch: '{area} open problems' OR '{area} future work'
-- Find recent discussions (blogs, forums, Twitter)
-- Return: gap description, why unsolved, potential approaches"
-```
-
-### Cross-Reference Agent
-```
-Task (Explore): "Find connections between {concept_a} and {concept_b}:
-- WebSearch: '{concept_a} {concept_b} relationship'
-- Look for: causal links, shared foundations, contradictions, implementations
-- Return: relationship type, evidence, sources"
-```
-
 ## Output
 
 After completion:
