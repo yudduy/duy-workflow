@@ -1,6 +1,6 @@
 ---
 description: Ralph-powered deep research exploration - exhaustively discovers and maps concepts, papers, implementations
-argument-hint: "<topic> [--map] [--exhaustive] [--max-iterations N]"
+argument-hint: "<topic> [--map] [--exhaustive] [--team] [--max-iterations N]"
 allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 ---
 
@@ -13,6 +13,7 @@ Ralph-powered exhaustive research on a topic. Continues until knowledge base is 
 - `--map`: Auto-generate MINDMAP.md after research completes
 - `--exhaustive`: Full output (no caps on implementations/papers)
 - `--max-iterations N`: Override default iteration limit (default: 100)
+- `--team`: Use agent teams for parallel vibe research (higher token cost, faster wall-clock, better for broad topics with 3+ subtopics)
 
 ## Setup
 
@@ -134,6 +135,78 @@ THEN: <promise>RESEARCH_EXHAUSTED</promise>
 
 If genuinely stuck: <promise>BLOCKED: [reason]</promise>"
 ```
+
+## Team Mode (--team flag)
+
+When `--team` is specified, SKIP the Ralph loop above. Use agent teams instead.
+
+Vibe research: let teammates explore broadly, share findings via note files, lead synthesizes. Two phases — scout directions first, then deep dive on winners.
+
+### Phase 1: Scout Directions
+
+```
+1. Decompose topic into 3-4 candidate subtopics/directions worth exploring
+2. Create team: Teammate tool, operation: 'spawnTeam', team_name: '{topic-slug}-research'
+3. Create one TaskCreate per direction:
+   - description: "Scout {direction}: find key papers, SOTA, active researchers, open problems. Write findings to docs/research/{topic}/notes/{direction-slug}.md"
+4. Spawn one teammate per direction via Task tool:
+   - team_name: '{topic-slug}-research'
+   - model: 'sonnet' (cheaper for search-heavy scouting)
+   - subagent_type: general-purpose
+   - Prompt: "You are a research scout. Claim your task from the task list.
+     Write ALL findings to docs/research/{topic}/notes/{your-area}.md.
+     You can READ other teammates' note files in docs/research/{topic}/notes/ to avoid duplication and find connections.
+     Format: bullet list with citations. Include: key papers, SOTA, researchers, open problems, promising directions.
+     When done, mark your task completed."
+5. Max 4 teammates. If more than 4 directions, group related ones.
+```
+
+### Phase 1→2 Transition
+
+```
+1. Wait for all scout tasks to complete (check TaskList)
+2. Read ALL note files in docs/research/{topic}/notes/
+3. Synthesize into KNOWLEDGE.md: Summary, Core Concepts, Key Literature (initial pass)
+4. DECIDE: which 2-3 directions are most promising? (based on: paper density, open gaps, relevance to topic)
+5. Log decision rationale in KNOWLEDGE.md Summary section
+6. Create new TaskCreate entries for Phase 2 deep dives on selected directions
+```
+
+### Phase 2: Deep Dive
+
+```
+1. Reassign existing teammates OR spawn new ones for selected directions:
+   - Same config: model 'sonnet', general-purpose
+   - Prompt: "Deep dive on {selected direction}. Read docs/research/{topic}/notes/ for context from Phase 1.
+     Expand your notes file with: full paper summaries (abstract + methodology), implementation details,
+     cross-references to other teammates' findings, contradictions found.
+     Follow citation chains: if Paper A cites Paper B, research Paper B.
+     Read other teammates' note files for connections — if you find contradictions, note them in your file."
+2. Lead (Opus) monitors progress, reads note files each check-in
+3. Lead synthesizes KNOWLEDGE.md from all note files after each check-in
+4. Lead identifies cross-cutting gaps and creates follow-up tasks
+```
+
+### Team Completion
+
+```
+1. When KNOWLEDGE.md meets all Quality Gates (same as subagent mode):
+   - Core concepts with multiple sources
+   - Seminal papers read and summarized
+   - Connections mapped, contradictions noted
+2. Shutdown all teammates (SendMessage type: 'shutdown_request')
+3. Teammate cleanup (Teammate tool, operation: 'cleanup')
+4. Output: <promise>RESEARCH_EXHAUSTED</promise>
+```
+
+### Token Efficiency Rules (team mode)
+- Sonnet for ALL scout/research teammates (web search doesn't need Opus)
+- Lead (Opus) only synthesizes and coordinates — never searches
+- Note files over messages (async, no token cost for cross-talk)
+- Max 4 teammates total across both phases
+- Kill Phase 1 directions that show low promise — don't deep dive everything
+
+---
 
 ## Post-Research: Mind Map Generation (--map flag)
 
