@@ -21,6 +21,35 @@ Ralph-powered exhaustive research on a topic. Continues until knowledge base is 
 mkdir -p docs/research/{topic-slug}/notes
 ```
 
+### Initialize Handbook (if it doesn't exist)
+
+Check for `docs/HANDBOOK.md`. If it doesn't exist, create it:
+
+```markdown
+# Handbook
+> Living index of all research, discoveries, and operational knowledge.
+> Agents: READ this file before starting any work. UPDATE it after completing work.
+
+## Knowledge Tree
+
+## Discovery Tree
+
+## Cross-References
+<!-- connections between topics, discoveries, and codebase areas -->
+
+## Operational Notes
+### Codebase Gotchas
+
+### Patterns That Work
+
+### Anti-Patterns
+```
+
+If `docs/HANDBOOK.md` already exists, READ it now. Check for:
+- Related topics already researched (avoid duplication, find connections)
+- Relevant discoveries that inform this research
+- Operational notes that affect how to approach this topic
+
 Initialize `docs/research/{topic}/KNOWLEDGE.md` (compact format):
 ```markdown
 # Research: {Topic}
@@ -76,6 +105,7 @@ When you find contradictory information from different sources:
 
 ## Each Iteration:
 1. READ docs/research/{topic}/KNOWLEDGE.md for current state
+1b. On FIRST iteration: READ docs/HANDBOOK.md — check for related topics, pull in cross-references, avoid re-researching what's already known
 2. IDENTIFY gaps using systematic decomposition:
    - What sub-topics have zero coverage?
    - What claims have only one source? (need 2+)
@@ -131,7 +161,16 @@ When ALL of these are true:
 - Research gaps explicitly identified
 - Connections section maps relationships between concepts
 - No obvious unexplored threads
-THEN: <promise>RESEARCH_EXHAUSTED</promise>
+THEN:
+1. UPDATE docs/HANDBOOK.md — add/update entry in Knowledge Tree:
+   {Topic}
+   ├── docs/research/{topic}/KNOWLEDGE.md
+   ├── Key: {one-sentence summary of most important finding}
+   ├── Concepts: {N} | Papers: {M} | Implementations: {I}
+   └── Connects to: [[other topics or discoveries already in handbook]]
+   Also update Cross-References if this topic relates to existing entries.
+   Also add any operational gotchas learned during research to Operational Notes.
+2. <promise>RESEARCH_EXHAUSTED</promise>
 
 If genuinely stuck: <promise>BLOCKED: [reason]</promise>"
 ```
@@ -194,9 +233,10 @@ Vibe research: let teammates explore broadly, share findings via note files, lea
    - Core concepts with multiple sources
    - Seminal papers read and summarized
    - Connections mapped, contradictions noted
-2. Shutdown all teammates (SendMessage type: 'shutdown_request')
-3. Teammate cleanup (Teammate tool, operation: 'cleanup')
-4. Output: <promise>RESEARCH_EXHAUSTED</promise>
+2. UPDATE docs/HANDBOOK.md — add entry to Knowledge Tree (same format as subagent mode)
+3. Shutdown all teammates (SendMessage type: 'shutdown_request')
+4. Teammate cleanup (Teammate tool, operation: 'cleanup')
+5. Output: <promise>RESEARCH_EXHAUSTED</promise>
 ```
 
 ### Token Efficiency Rules (team mode)
@@ -253,5 +293,6 @@ Research complete: docs/research/{topic}/KNOWLEDGE.md
 - Implementations: {I}
 - Connections: {C}
 - Gaps: {G}
+- Handbook: docs/HANDBOOK.md (updated)
 [If --map] Mind map: docs/research/{topic}/MINDMAP.md
 ```

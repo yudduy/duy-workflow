@@ -23,6 +23,16 @@ Open-ended discovery loop. Hypothesizes, web-searches for evidence and counterev
 mkdir -p docs/discoveries/{topic-slug}
 ```
 
+### Read Handbook First
+
+Check for `docs/HANDBOOK.md`. If it exists, READ it before creating any files:
+- Check Knowledge Tree for related research (load relevant KNOWLEDGE.md files)
+- Check Discovery Tree for related discoveries (avoid re-exploring solved problems)
+- Check Cross-References for connections that inform this discovery
+- Check Operational Notes for gotchas
+
+If `docs/HANDBOOK.md` doesn't exist, create it (same template as /research skill).
+
 Create TWO files:
 
 ### File 1: `docs/discoveries/{topic-slug}/DISCOVERY.md` (Current State)
@@ -182,6 +192,7 @@ For ALL reasoning:
 
 Before hypothesizing, understand what exists:
 
+0. READ docs/HANDBOOK.md — pull in any related research or discoveries as starting context for the Landscape section. Don't re-research what's already in the handbook.
 1. WebSearch the problem space extensively:
    - Current state of the art?
    - Key researchers and recent publications?
@@ -354,7 +365,16 @@ D. DIMINISHING RETURNS: 3+ iterations where you learned nothing new (AND incubat
 When ANY stop condition triggers:
 1. Update Best Result with: hypothesis, confidence, what attacks it survived, open questions
 2. Update Termination with reason and robustness assessment
-3. Output: <promise>DISCOVERY_COMPLETE</promise>
+3. UPDATE docs/HANDBOOK.md — add/update entry in Discovery Tree:
+   {Topic}
+   ├── docs/discoveries/{topic}/DISCOVERY.md
+   ├── Status: {Accepted|Exhausted|Incomplete} | Confidence: {HIGH|MEDIUM|LOW}
+   ├── Key: {one-sentence summary of best hypothesis or finding}
+   ├── Playbook entries: {N across families}
+   └── Connects to: [[related topics or discoveries in handbook]]
+   Also update Cross-References with any new connections found.
+   Also add operational gotchas and playbook heuristics worth preserving to Operational Notes.
+4. Output: <promise>DISCOVERY_COMPLETE</promise>
 
 ## ANTI-CIRCUMVENTION
 - Do NOT output the promise prematurely — the hypothesis must have survived real scrutiny
@@ -448,9 +468,10 @@ D. DIMINISHING RETURNS: 3+ iterations, nothing new
 
 When stopping:
 1. Update DISCOVERY.md with final state
-2. Shutdown all teammates (SendMessage type: 'shutdown_request')
-3. Teammate cleanup (Teammate tool, operation: 'cleanup')
-4. <promise>DISCOVERY_COMPLETE</promise>"
+2. UPDATE docs/HANDBOOK.md — add entry to Discovery Tree (same format as subagent mode)
+3. Shutdown all teammates (SendMessage type: 'shutdown_request')
+4. Teammate cleanup (Teammate tool, operation: 'cleanup')
+5. <promise>DISCOVERY_COMPLETE</promise>"
 ```
 
 ### Token Efficiency Rules (team mode)
@@ -474,6 +495,7 @@ Discovery complete: docs/discoveries/{topic-slug}/DISCOVERY.md
 - Survived: {list of attacks/verifications it passed}
 - Playbook entries: {count across families}
 - Termination: {reason}
+- Handbook: docs/HANDBOOK.md (updated)
 ```
 
 ---

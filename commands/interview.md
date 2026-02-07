@@ -37,6 +37,13 @@ ls -la && ls package.json pyproject.toml Cargo.toml go.mod 2>/dev/null
 git log --oneline -10 2>/dev/null
 ```
 
+**Read the Handbook:** Check for `docs/HANDBOOK.md`. If it exists, read it first:
+- Knowledge Tree — has this topic (or a related one) already been researched?
+- Discovery Tree — any relevant hypotheses or findings?
+- Cross-References — connections that inform the feature design
+- Operational Notes — known gotchas, working patterns, anti-patterns
+Surface relevant handbook context to the user during the interview.
+
 **Parallel exploration** (Task tool, Explore subagents):
 - Architecture: structure, entry points, patterns
 - Testing: frameworks, conventions, existing test examples

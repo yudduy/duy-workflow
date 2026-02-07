@@ -41,6 +41,14 @@ If the user provided a spec path in their message, use that. Otherwise auto-dete
 
 **Also read the project CLAUDE.md** (at the git repo root) for patterns, anti-patterns, and conventions before starting execution.
 
+**Also read `docs/HANDBOOK.md`** if it exists. The handbook contains:
+- Related research (Knowledge Tree) — prior findings that inform implementation decisions
+- Related discoveries — hypotheses and evidence relevant to the feature
+- Cross-references — connections between topics
+- Operational notes — codebase gotchas, patterns that work, anti-patterns to avoid
+
+Pull relevant context from the handbook into your implementation planning. After execution completes, update the Operational Notes section with any new gotchas or patterns learned during implementation.
+
 ## Initialize Ralph Loop
 
 ```!
@@ -127,6 +135,13 @@ DELEGATE qa-engineer to verify everything (test coverage, edge cases, integratio
 Run the project's test/build/lint commands and show actual output.
 Common patterns: npm test, pytest, cargo test, go test, make test
 Detect from package.json, pyproject.toml, Cargo.toml, Makefile, etc.
+
+## Post-Implementation: Update Handbook
+If docs/HANDBOOK.md exists, update the Operational Notes section with:
+- Any codebase gotchas encountered during implementation
+- Patterns that worked well (reusable for future specs)
+- Anti-patterns discovered (traps to avoid)
+Keep entries concise — one line each, with context of where it applies.
 
 ## Completion:
 When ALL requirements pass with tests + build + lint clean:
