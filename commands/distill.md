@@ -1,6 +1,6 @@
 ---
 description: Distill enduring questions into timeless, incompressible wisdom — decomposes, challenges assumptions, synthesizes with Naval/Deutsch density
-argument-hint: "<question> [--deep] [--refine PATH] [--max-iterations N]"
+argument-hint: "<question> [--deep] [--refine PATH] [--team] [--max-iterations N]"
 allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 ---
 
@@ -15,6 +15,7 @@ The process: decompose the question, challenge its assumptions, research the sub
 - `--deep`: 3x iterations, broader source mining
 - `--refine PATH`: Go deeper on an existing distillation
 - `--max-iterations N`: Override default (15, deep: 45)
+- `--team`: Parallel agents: researcher + philosopher + editor
 
 ## Principles
 
@@ -208,6 +209,87 @@ When ALL quality gates pass AND compression has converged:
 
 If stuck: <promise>BLOCKED: [reason]</promise>"
 ```
+
+## Team Mode (--team flag)
+
+When `--team` is specified, SKIP the Ralph loop above. Three roles: researcher mines sources, philosopher extracts principles and challenges assumptions, editor compresses.
+
+### Setup
+
+```
+1. Create team: Teammate tool, operation: 'spawnTeam', team_name: '{question-slug}-distill'
+2. Create output file docs/distill/{slug}.md with template above
+3. Create docs/distill/notes/ directory
+4. Spawn 3 teammates via Task tool with team_name:
+
+RESEARCHER (model: 'sonnet', subagent_type: general-purpose):
+"You are a research miner for a distillation project.
+Question: {question}
+Read docs/distill/{slug}.md for current state.
+Your job: find the BEST sources. Not the most — the best.
+Source hierarchy: decade-long practitioners > books > papers > essays.
+WebSearch aggressively for:
+- Thinkers who spent decades on this question
+- Best-regarded books on this topic
+- Contrarian voices who disagree with mainstream
+- Meta-analyses and foundational research
+Write ALL findings to docs/distill/notes/sources.md.
+For each source: key insight (< 20 words), citation, Lindy rating (timeless/enduring/recent).
+When the philosopher or editor need evidence checked, claim their tasks."
+
+PHILOSOPHER (model: 'opus', subagent_type: general-purpose):
+"You are a first-principles philosopher for a distillation project.
+Question: {question}
+Read docs/distill/{slug}.md for current state.
+Read docs/distill/notes/sources.md for what the researcher found.
+Your job: extract first principles AND challenge assumptions.
+Write reasoning to docs/distill/notes/principles.md.
+For each principle: state it, trace to bedrock (physics/evolution/math/human nature), what breaks if removed.
+For each assumption in the question: WebSearch for evidence against it. Note contested assumptions.
+Find the contrarian truth — what's true but unpopular?"
+
+EDITOR (model: 'opus', subagent_type: general-purpose):
+"You are a ruthless compression editor for a distillation project.
+Question: {question}
+Read docs/distill/{slug}.md for current state.
+Read docs/distill/notes/sources.md and docs/distill/notes/principles.md.
+Your job: compress. Every word must be load-bearing.
+Write compressed drafts to docs/distill/notes/compressed.md.
+Rules: remove derivatives, remove hedging, merge redundancies, incompressibility test.
+The distillation should get SHORTER each pass, never longer."
+```
+
+### Lead Coordination
+
+```!
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
+  --max-iterations "${MAX_ITER:-15}" \
+  --completion-promise "DISTILLED" \
+  "You are the distillation lead. Do NOT research or write insights yourself.
+
+Each iteration:
+1. Check TaskList for status
+2. Read ALL note files in docs/distill/notes/
+3. Synthesize into docs/distill/{slug}.md — apply the template format
+4. Assess quality gates (same as solo mode)
+5. Create follow-up tasks:
+   - Researcher: 'Find sources for {weakest section}' or 'Search for counterargument to {insight}'
+   - Philosopher: 'Trace {principle} to bedrock' or 'Challenge assumption: {assumption}'
+   - Editor: 'Compress {section} — currently {N} words, target {N/2}'
+
+When all quality gates pass:
+1. Update docs/HANDBOOK.md
+2. Shutdown teammates (SendMessage type: 'shutdown_request')
+3. Teammate cleanup
+4. <promise>DISTILLED</promise>"
+```
+
+### Token Efficiency (team mode)
+- Researcher: Sonnet (search-heavy)
+- Philosopher + Editor: Opus (deep reasoning)
+- Cross-talk via note files only
+- Lead only synthesizes — never searches or reasons about content
+- Max 3 teammates
 
 ## Output
 
