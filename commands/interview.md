@@ -19,7 +19,9 @@ Generate a precise, verifiable SPEC.md through codebase exploration, reference d
 
 ## PHASE 1: UNDERSTAND BEFORE ASKING
 
-Before asking a single question, do three things in parallel:
+Before asking a single question, do three things in parallel.
+
+**MANDATORY: All three must run in parallel. Do NOT skip 1C.**
 
 ### 1A: Know Your Codebase
 - Read project CLAUDE.md (git repo root), `docs/HANDBOOK.md` if it exists
@@ -31,9 +33,9 @@ Before asking a single question, do three things in parallel:
 - **DeepWiki:** For any GitHub projects relevant to this domain, ask how they implement it. Get architecture, key files, interfaces.
 - **Libraries:** If a library might help, use DeepWiki to read its actual source. Don't guess APIs — read them. Evaluate extract-vs-import (Karpathy pattern).
 
-### 1C: Dispatch Codex Explorer (in parallel with 1A + 1B)
+### 1C: Dispatch Codex Partner (MANDATORY — run in parallel with 1A + 1B)
 
-Launch Codex to independently explore the codebase and research references:
+**You MUST run this Bash command before asking any questions.** Codex is your pair programming partner for the entire interview. It independently explores the codebase and researches references while you do 1A + 1B. Skip this = incomplete interview.
 
 ```bash
 CODEX_OUTPUT=$(codex exec --json --full-auto --skip-git-repo-check \
@@ -50,13 +52,16 @@ echo "Codex session: $CODEX_SESSION_ID"
 
 Store `$CODEX_SESSION_ID` — resume this session throughout the interview and pass it to /execute.
 
-### 1D: Present What You Found
-Before interviewing, show the user:
+### 1D: Present What You Found (MUST include Codex findings)
+
+Before interviewing, read `/tmp/codex-interview-output.txt` and show the user:
 1. "Here's what already exists in your codebase that's related: [X]"
 2. "Here's how [project A] and [project B] solve this"
 3. "I'd recommend scaffolding on [X]'s approach because [reason]"
-4. "Codex independently found: [summarize /tmp/codex-interview-output.txt]"
+4. **"Codex independently found: [summarize Codex's findings — different perspective, files it identified, patterns it noticed that you didn't]"**
 5. "Here's what I think you want — correct me"
+
+**If Codex found something you missed, say so.** The value of a pair is that they see different things.
 
 **Update project CLAUDE.md** with any discoveries (new patterns, gotchas, reference implementations).
 
