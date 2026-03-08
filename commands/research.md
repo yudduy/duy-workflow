@@ -247,44 +247,39 @@ Understand the problem space before doing anything.
 
 Map what's known. Use parallel Task subagents:
 
-**Literature Scout** (Task, general-purpose, run_in_background: true):
-```
-Search for existing work on: {research question}
-Tools: ask_alphaxiv (primary), Exa MCP (web_search_exa), WebSearch
-Do NOT dump full papers into context.
+**Literature Scout** (Task, general-purpose, run_in_background: true) — prompt:
 
-ITERATIVE ALPHAXIV INTERROGATION (3-pass pattern):
+    Search for existing work on: {research question}
+    Tools: ask_alphaxiv (primary), Exa MCP (web_search_exa), WebSearch
+    Do NOT dump full papers into context.
 
-Pass 1 — Landscape scan (new conversation):
-  ask_alphaxiv: "{broad research question} — what are current SOTA approaches, key papers, and known failure modes?"
-  → Extract conversation_id from response for follow-ups
-  → Note claimed papers and mechanisms
+    ITERATIVE ALPHAXIV INTERROGATION (3-pass pattern):
 
-Pass 2 — Drill into specifics (same conversation_id):
-  ask_alphaxiv: "For {specific approach from Pass 1}: what are the exact mechanisms? What pathologies are documented? What constraints does this impose?"
-  → Use conversation_id from Pass 1 for context continuity
-  → Note any specific claims about formulas, method names, architectural details
+    Pass 1 — Landscape scan (new conversation):
+      ask_alphaxiv with broad question about SOTA, key papers, failure modes
+      Extract conversation_id for follow-ups. Note claimed papers and mechanisms.
 
-Pass 3 — Adversarial pressure test (same conversation_id):
-  ask_alphaxiv: "What are the strongest arguments AGAINST {approach}? What has been tried and failed? What assumptions might not hold?"
-  → Push back on optimistic framing
+    Pass 2 — Drill into specifics (same conversation_id):
+      ask_alphaxiv for exact mechanisms, pathologies, constraints
+      Note specific claims about formulas, method names, architectural details
 
-After all passes: run mandatory verification protocol (see HALLUCINATION WARNING above).
-Only VERIFIED claims go into LITERATURE.md. FABRICATED claims go into MISTAKES.md.
+    Pass 3 — Adversarial pressure test (same conversation_id):
+      ask_alphaxiv for strongest arguments AGAINST, failed attempts, broken assumptions
 
-Find: key papers, implementations, known results, failed approaches
-Write structured notes to: docs/research/{topic}/LITERATURE.md
-Focus on: {lead's specific directive}
-```
+    After all passes: run mandatory verification protocol (see HALLUCINATION WARNING).
+    Only VERIFIED claims go into LITERATURE.md. FABRICATED claims go into MISTAKES.md.
 
-**Implementation Scout** (Task, Explore, run_in_background: true):
-```
-Search for existing implementations related to: {research question}
-Tools: WebSearch, Exa MCP (get_code_context_exa), DeepWiki MCP
-Find: repos, benchmarks, reference implementations, tooling
-Write to: docs/research/{topic}/LITERATURE.md (Key Implementations section)
-Focus on: {lead's specific directive}
-```
+    Find: key papers, implementations, known results, failed approaches
+    Write structured notes to: docs/research/{topic}/LITERATURE.md
+    Focus on: {leads specific directive}
+
+**Implementation Scout** (Task, Explore, run_in_background: true) — prompt:
+
+    Search for existing implementations related to: {research question}
+    Tools: WebSearch, Exa MCP (get_code_context_exa), DeepWiki MCP
+    Find: repos, benchmarks, reference implementations, tooling
+    Write to: docs/research/{topic}/LITERATURE.md (Key Implementations section)
+    Focus on: {leads specific directive}
 
 After scouts return: synthesize into Current Understanding in RESEARCH-PROGRESS.md.
 
@@ -299,38 +294,30 @@ Form falsifiable hypotheses from what SEARCH revealed.
 Your own: Generate 2-3 candidate conjectures from LITERATURE.md findings.
 
 **Codex direction proposal** (via Bash):
-```bash
-codex exec --skip-git-repo-check "ABDUCTIVE REASONING — CONJECTURE GENERATION
 
-Research question: {question}
-Literature summary: {key findings from LITERATURE.md}
-Known dead ends: {failed approaches}
-
-Propose 2-3 falsifiable conjectures:
-1. What pattern in the evidence suggests a non-obvious explanation? (abduction)
-2. What direction would you investigate that isn't in the literature?
-3. What assumption is everyone taking for granted but might be wrong?
-
-For each: formal statement, kill criterion (specific + measurable), what experiment would test it.
-Propose freely — diverge from the literature if you see something."
-```
+    codex exec --skip-git-repo-check "ABDUCTIVE REASONING — CONJECTURE GENERATION
+    Research question: {question}
+    Literature summary: {key findings from LITERATURE.md}
+    Known dead ends: {failed approaches}
+    Propose 2-3 falsifiable conjectures:
+    1. What pattern in the evidence suggests a non-obvious explanation? (abduction)
+    2. What direction would you investigate that isnt in the literature?
+    3. What assumption is everyone taking for granted but might be wrong?
+    For each: formal statement, kill criterion (specific + measurable), what experiment would test it.
+    Propose freely — diverge from the literature if you see something."
 
 **Gemini direction proposal** (via Bash):
-```bash
-gemini -p "CONJECTURE GENERATION
 
-Research question: {question}
-What's known: {literature summary}
-What's failed: {dead ends}
-
-Propose 2-3 conjectures I might be missing:
-1. What would a contrarian researcher bet on?
-2. What cross-domain analogy suggests an approach nobody's tried?
-3. What's the simplest possible explanation that fits the data?
-
-For each: falsifiable statement + kill criterion + first experiment.
-Different perspective is the point — don't just echo the literature."
-```
+    gemini -p "CONJECTURE GENERATION
+    Research question: {question}
+    Whats known: {literature summary}
+    Whats failed: {dead ends}
+    Propose 2-3 conjectures I might be missing:
+    1. What would a contrarian researcher bet on?
+    2. What cross-domain analogy suggests an approach nobodys tried?
+    3. Whats the simplest possible explanation that fits the data?
+    For each: falsifiable statement + kill criterion + first experiment.
+    Different perspective is the point — dont just echo the literature."
 
 **Step 2: Merge and triangulate** all candidates (yours + codex + gemini):
 - **Convergence**: multiple models propose similar direction → high prior, strong candidate
@@ -339,15 +326,11 @@ Different perspective is the point — don't just echo the literature."
 
 **Step 3: Cross-verify the selected conjecture(s)** — run in parallel:
 
-```bash
-codex exec --skip-git-repo-check "PEER REVIEW: Conjecture '{statement}'. Kill criterion: '{criterion}'. Evidence: {summary}.
-Is it falsifiable? Obvious confounds? Simpler explanation? What experiment FIRST? Be direct."
-```
+    codex exec --skip-git-repo-check "PEER REVIEW: Conjecture '{statement}'. Kill criterion: '{criterion}'. Evidence: {summary}.
+    Is it falsifiable? Obvious confounds? Simpler explanation? What experiment FIRST? Be direct."
 
-```bash
-gemini -p "ADVERSARIAL REVIEW: Conjecture '{statement}'. Kill criterion: '{criterion}'.
-Strongest argument AGAINST? Kill criterion too easy/hard? What's naive? Similar conjecture that failed? Be ruthless."
-```
+    gemini -p "ADVERSARIAL REVIEW: Conjecture '{statement}'. Kill criterion: '{criterion}'.
+    Strongest argument AGAINST? Kill criterion too easy/hard? Whats naive? Similar conjecture that failed? Be ruthless."
 
 **Step 4:** Incorporate feedback. If both models flag the same issue → fix before proceeding.
 **Step 5:** Write selected conjecture(s) to CONJECTURES.md with ACTIVE status.
@@ -378,41 +361,33 @@ When confidence crosses a threshold (0→40, 40→70, 70→90):
 Run in parallel:
 
 **Codex analysis review** (via Bash):
-```bash
-codex exec --skip-git-repo-check "RESULTS ANALYSIS
 
-Conjecture: {statement}
-Kill criterion: {criterion}
-Experiment: {what was run}
-Result: {raw data}
-My interpretation: {what I think this means}
-
-Review:
-1. Does the data actually support this interpretation?
-2. Are there alternative explanations for the same data?
-3. Is the sample size / test adequate?
-4. What's the confidence level (0-100) you'd assign?
-
-Disagree freely."
-```
+    codex exec --skip-git-repo-check "RESULTS ANALYSIS
+    Conjecture: {statement}
+    Kill criterion: {criterion}
+    Experiment: {what was run}
+    Result: {raw data}
+    My interpretation: {what I think this means}
+    Review:
+    1. Does the data actually support this interpretation?
+    2. Are there alternative explanations for the same data?
+    3. Is the sample size / test adequate?
+    4. Whats the confidence level (0-100) youd assign?
+    Disagree freely."
 
 **Gemini analysis review** (via Bash):
-```bash
-gemini -p "RESULTS VERIFICATION
 
-Conjecture: {statement}
-Experiment: {method}
-Result: {raw data}
-Claimed interpretation: {interpretation}
-
-Verify:
-1. Does this result ACTUALLY discriminate between the conjecture and alternatives?
-2. What's the biggest threat to validity?
-3. What would you need to see to be convinced?
-4. Confidence (0-100)?
-
-Different perspective welcome."
-```
+    gemini -p "RESULTS VERIFICATION
+    Conjecture: {statement}
+    Experiment: {method}
+    Result: {raw data}
+    Claimed interpretation: {interpretation}
+    Verify:
+    1. Does this result ACTUALLY discriminate between the conjecture and alternatives?
+    2. Whats the biggest threat to validity?
+    3. What would you need to see to be convinced?
+    4. Confidence (0-100)?
+    Different perspective welcome."
 
 Log all cross-verification results in the Cross-Verification Log table in RESEARCH-PROGRESS.md.
 
@@ -433,18 +408,16 @@ Explicit decision. No drifting. Choose ONE:
 | **ABANDON** | Direction exhausted, no productive path forward | Mark conjecture KILLED, check if all directions explored |
 
 **On PIVOT — multi-model direction finding** (run in parallel via Bash):
-```bash
-codex exec --skip-git-repo-check "PIVOT REQUIRED. Conjecture '{killed conjecture}' died because: {kill reason}.
-Research question: {question}. What we've learned so far: {summary}.
-Given this failure, what direction would you try next? What does the failure itself reveal?
-Propose 1-2 new conjectures with kill criteria."
-```
-```bash
-gemini -p "PIVOT REQUIRED. '{killed conjecture}' was killed by: {kill reason}.
-Question: {question}. Dead ends so far: {list}.
-What's the most promising unexplored direction? What assumption should we drop?
-Propose 1-2 conjectures. Be contrarian — the obvious directions already failed."
-```
+
+    codex exec --skip-git-repo-check "PIVOT REQUIRED. Conjecture '{killed conjecture}' died because: {kill reason}.
+    Research question: {question}. What weve learned so far: {summary}.
+    Given this failure, what direction would you try next? What does the failure itself reveal?
+    Propose 1-2 new conjectures with kill criteria."
+
+    gemini -p "PIVOT REQUIRED. '{killed conjecture}' was killed by: {kill reason}.
+    Question: {question}. Dead ends so far: {list}.
+    Whats the most promising unexplored direction? What assumption should we drop?
+    Propose 1-2 conjectures. Be contrarian — the obvious directions already failed."
 Merge proposals with your own. Convergence across models = strong candidate.
 
 Log decision in Decision Trail table in RESEARCH-PROGRESS.md.
@@ -491,23 +464,19 @@ When exit condition is met:
 1. Final DOCUMENT pass — all 6 files complete and consistent
 2. Final cross-verification of conclusion:
 
-   ```bash
-   codex exec 'FINAL REVIEW of research conclusion:
-   Question: {question}
-   Answer: {conclusion}
-   Confidence: {N}
-   Key evidence: {summary}
-   Is this conclusion justified? What caveats should be stated?'
-   ```
+       codex exec --skip-git-repo-check "FINAL REVIEW of research conclusion:
+       Question: {question}
+       Answer: {conclusion}
+       Confidence: {N}
+       Key evidence: {summary}
+       Is this conclusion justified? What caveats should be stated?"
 
-   ```bash
-   gemini -p 'FINAL REVIEW of research conclusion:
-   Question: {question}
-   Answer: {conclusion}
-   Confidence: {N}
-   Experiments: {summary}
-   Grade this conclusion A-F. What would make it stronger?'
-   ```
+       gemini -p "FINAL REVIEW of research conclusion:
+       Question: {question}
+       Answer: {conclusion}
+       Confidence: {N}
+       Experiments: {summary}
+       Grade this conclusion A-F. What would make it stronger?"
 
 3. Write final Summary block in RESEARCH-PROGRESS.md
 4. If in a vault project, run KG Deposit:
