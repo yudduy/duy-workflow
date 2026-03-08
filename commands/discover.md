@@ -229,18 +229,18 @@ Do NOT create any other files in notes/.
 
 ## CODEX PARTNER
 
-Initialize on first iteration:
-```bash
-CODEX_OUTPUT=$(codex exec --json --full-auto --skip-git-repo-check \
-  -o /tmp/codex-discover.txt \
-  'You are a persistent thinking partner for a discovery process.
-   Problem: {problem statement}
-   Your role: independently explore literature, propose directions, critique hypotheses.
-   You will be resumed each iteration with new context. TODO.md is our shared roadmap.
-   Start: what do you already know about this topic? What directions would you explore first?' 2>&1)
-CODEX_SESSION_ID=$(echo '$CODEX_OUTPUT' | grep 'thread.started' | jq -r '.thread_id')
-```
-Store in TODO.md under ## Sessions. All subsequent calls: `codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check`
+Initialize on first iteration via Bash tool:
+
+    CODEX_OUTPUT=$(codex exec --json --full-auto --skip-git-repo-check \
+      -o /tmp/codex-discover.txt \
+      'You are a persistent thinking partner for a discovery process.
+       Problem: {problem statement}
+       Your role: independently explore literature, propose directions, critique hypotheses.
+       You will be resumed each iteration with new context. TODO.md is our shared roadmap.
+       Start: what do you already know about this topic? What directions would you explore first?' 2>&1)
+    CODEX_SESSION_ID=$(echo "$CODEX_OUTPUT" | grep 'thread.started' | jq -r '.thread_id')
+
+Store in TODO.md under ## Sessions. All subsequent calls use: codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check
 
 ## TODO.md IS THE PLAN
 
@@ -259,12 +259,11 @@ Before hypothesizing, understand what exists. Run in parallel:
 2. Drill specifics (same conversation_id): mechanisms, pathologies, constraints
 3. Adversarial pressure (same conversation_id): strongest arguments against, failures
 
-**Codex (resume):**
-```bash
-codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-  -o /tmp/codex-landscape.txt \
-  'Independent landscape survey for: {problem}. Use DeepWiki for relevant repos. Search broadly. What do YOU find that I might miss? Write findings — I will merge into notes/landscape.md.'
-```
+**Codex (resume via Bash tool):**
+
+    codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+      -o /tmp/codex-landscape.txt \
+      'Independent landscape survey for: {problem}. Use DeepWiki for relevant repos. Search broadly. What do YOU find that I might miss? Write findings — I will merge into notes/landscape.md.'
 
 **Task subagents:** impossibility results, failed approaches, cross-domain analogies
 
@@ -280,24 +279,22 @@ Update TODO.md: check off completed items, add new leads discovered.
 
 You: Generate 2-3 candidates from landscape + analogies.
 
-Codex (resume — already has landscape context):
-```bash
-codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-  -o /tmp/codex-hypotheses.txt \
-  'Based on everything we have explored so far, propose 2-3 hypotheses:
-   1. What pattern suggests a non-obvious explanation? (abduction)
-   2. What direction is not obvious from the landscape?
-   3. What assumption is everyone taking for granted?
-   For each: falsifiable statement, kill condition, first test.'
-```
+Codex (resume — already has landscape context, via Bash tool):
 
-Gemini (fresh — self-contained prompt):
-```bash
-gemini -p 'DIRECTION PROPOSAL
-Problem: {problem statement}. Known: {landscape summary}. Failed: {dead ends}.
-Propose 2-3 hypotheses. What would a contrarian bet on? What assumption might be wrong?
-For each: falsifiable statement + kill condition. Different perspective is the point.'
-```
+    codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+      -o /tmp/codex-hypotheses.txt \
+      'Based on everything we have explored so far, propose 2-3 hypotheses:
+       1. What pattern suggests a non-obvious explanation? (abduction)
+       2. What direction is not obvious from the landscape?
+       3. What assumption is everyone taking for granted?
+       For each: falsifiable statement, kill condition, first test.'
+
+Gemini (fresh — self-contained prompt, via Bash tool):
+
+    gemini -p 'DIRECTION PROPOSAL
+    Problem: {problem statement}. Known: {landscape summary}. Failed: {dead ends}.
+    Propose 2-3 hypotheses. What would a contrarian bet on? What assumption might be wrong?
+    For each: falsifiable statement + kill condition. Different perspective is the point.'
 
 Merge: convergence = high prior, unique angles = investigate, contradictions = informative tension.
 Update TODO.md with selected hypothesis and next steps.
@@ -308,21 +305,19 @@ Update TODO.md with selected hypothesis and next steps.
 
 Claude: Delegate VERIFIER subagent (Task) — WebSearch for contradictions, existing work, counterexamples. Write to notes/evidence.md.
 
-Codex (resume — remembers proposing the hypothesis):
-```bash
-codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-  -o /tmp/codex-review.txt \
-  'We selected hypothesis: {statement}. Kill criterion: {criterion}.
-   Peer review: Is it falsifiable? Confounds? Simpler explanation? Weakest assumption?
-   Be direct. You proposed alternatives earlier — do you still think this is the best one?'
-```
+Codex (resume — remembers proposing the hypothesis, via Bash tool):
 
-Gemini:
-```bash
-gemini -p 'ADVERSARIAL REVIEW. Hypothesis: {statement}. Assumptions: {list}. Evidence: {summary}.
-Find fatal flaws. Strongest argument AGAINST? Similar hypothesis that failed? What is naive?
-Be ruthless.'
-```
+    codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+      -o /tmp/codex-review.txt \
+      'We selected hypothesis: {statement}. Kill criterion: {criterion}.
+       Peer review: Is it falsifiable? Confounds? Simpler explanation? Weakest assumption?
+       Be direct. You proposed alternatives earlier — do you still think this is the best one?'
+
+Gemini (via Bash tool):
+
+    gemini -p 'ADVERSARIAL REVIEW. Hypothesis: {statement}. Assumptions: {list}. Evidence: {summary}.
+    Find fatal flaws. Strongest argument AGAINST? Similar hypothesis that failed? What is naive?
+    Be ruthless.'
 
 Triangulate verdicts in notes/evidence.md. Disagreement protocol:
 - All 3 ACCEPT → strong CANDIDATE
@@ -336,17 +331,17 @@ Update TODO.md with verdict and next action.
 
 1. alphaxiv: 'Has {our approach} been tried? Current SOTA?'
 2. WebSearch recent papers (last 6 months)
-3. Final multi-model round:
-   ```bash
-   codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-     -o /tmp/codex-final.txt \
-     'FINAL REVIEW: Our conclusion is {statement}, confidence {N}. Key evidence: {summary}.
-      You have been with this from the start. Is this justified? What caveats? What did we miss?'
-   ```
-   ```bash
-   gemini -p 'FINAL REVIEW: Hypothesis {statement}, confidence {N}. Evidence: {summary}.
-   Grade A-F. What would make it stronger?'
-   ```
+3. Final multi-model round (via Bash tool):
+
+   Codex:
+       codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+         -o /tmp/codex-final.txt \
+         'FINAL REVIEW: Our conclusion is {statement}, confidence {N}. Key evidence: {summary}.
+          You have been with this from the start. Is this justified? What caveats? What did we miss?'
+
+   Gemini:
+       gemini -p 'FINAL REVIEW: Hypothesis {statement}, confidence {N}. Evidence: {summary}.
+       Grade A-F. What would make it stronger?'
 4. All accept → ACCEPTED. Otherwise → refine or pivot.
 
 ### DISTILL (when ACCEPTED or best-effort)
@@ -387,11 +382,11 @@ Before completing:
 When the discovery is solid — not when phases are "done":
 1. Update DISCOVERY.md with final state and honest confidence
 2. Run KG Deposit:
-   a. Write to vault: `Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/Discovery - {Title}.md`
+   a. Write to vault: Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/Discovery - {Title}.md
       Frontmatter: tags (content/distillation, topics/{slug}), type: research, status: completed
-   b. Extract 3-7 atomic insights — Glob existing `Insight - *.md` first to avoid dupes
-   c. Update or create `MOC - {Topic}.md` in `3. Resources (Dynamic)/`
-   d. Update `MOC - Research Index.md` with vault wikilinks
+   b. Extract 3-7 atomic insights — Glob existing Insight - *.md first to avoid dupes
+   c. Update or create MOC - {Topic}.md in 3. Resources (Dynamic)/
+   d. Update MOC - Research Index.md with vault wikilinks
    e. Update VAULT-INDEX.md if new MOC or distillation
 3. <promise>DISCOVERY_COMPLETE</promise>
 

@@ -228,9 +228,9 @@ On first iteration: initialize Codex session (see LOCATE SPEC section). On subse
 ### TODO.md is the Shared Roadmap
 - Both agents read TODO.md at the start of every iteration
 - Both agents update it after every action (check off items, move Active, add notes)
-- Session IDs stored in `## Sessions` section
+- Session IDs stored in Sessions section of TODO.md
 - Decisions and debugging notes accumulate for later CLAUDE.md update
-- Always `codex exec resume $SESSION_ID` — never start fresh mid-execution
+- Always use codex exec resume $SESSION_ID — never start fresh mid-execution
 
 ## THE THREE VERIFICATION GATES (per REQ)
 
@@ -264,75 +264,64 @@ TODO.md is the single source of truth. Both Claude and Codex read it every itera
 - **Remove/modify tasks** when a REQ turns out to be wrong or unnecessary
 - **Split tasks** when one turns out to be bigger than expected
 - **Reorder priorities** when implementation reveals dependencies the spec didn't anticipate
-- **Add `## Spec Amendments`** when reality contradicts the spec — update the spec file too
+- Add a Spec Amendments section when reality contradicts the spec — update the spec file too
 - **Flag concerns** when something feels off — don't just grind through it
 
-```markdown
-# TODO: {Spec Name}
+TODO.md template (create this file at the start):
 
-## Sessions
-codex_session: {UUID}
+    # TODO: {Spec Name}
 
-## Roadmap
-Initialized from spec. LIVING — add, remove, reorder as understanding deepens.
+    ## Sessions
+    codex_session: {UUID}
 
-### REQ-1: {Name} [critical]
-- [x] Research: read reference implementation — Claude, iter 1
-- [x] Build: implement core logic — Claude, iter 2
-- [x] Test: write EARS tests (3/3 criteria) — Claude, iter 2
-- [x] Review: Codex APPROVED — iter 3
-- [x] Verify: Gate 3 integration — Claude, iter 3
+    ## Roadmap
+    Initialized from spec. LIVING — add, remove, reorder as understanding deepens.
 
-### REQ-2: {Name} [critical] ← REVISED iter 4: original approach didn't work, pivoted to {new approach}
-- [x] Research: extract pattern from {ref} — Codex, iter 2
-- [x] Build: implement utility module — Codex, iter 3
-- [ ] ~Build: original approach (ABANDONED — see Decisions)~
-- [x] Build: new approach using {X} — Codex, iter 5
-- [ ] Test: missing SHALL NOT test — Codex, iter 6 ← ACTIVE
-- [ ] Review: Claude pending
-- [ ] Verify: Gate 3
+    ### REQ-1: {Name} [critical]
+    - [x] Research: read reference implementation — Claude, iter 1
+    - [x] Build: implement core logic — Claude, iter 2
+    - [x] Test: write EARS tests (3/3 criteria) — Claude, iter 2
+    - [x] Review: Codex APPROVED — iter 3
+    - [x] Verify: Gate 3 integration — Claude, iter 3
 
-### REQ-NEW: {Discovered during implementation} [important]
-- [ ] Added iter 4: found during REQ-2 that we also need {X}
-- [ ] Build
-- [ ] Test
-- [ ] Review
+    ### REQ-2: {Name} [critical] — REVISED iter 4: pivoted to {new approach}
+    - [x] Research: extract pattern from {ref} — Codex, iter 2
+    - [x] Build: implement utility module — Codex, iter 3
+    - [ ] Build: new approach using {X} — Codex, iter 5
+    - [ ] Test: missing SHALL NOT test — Codex, iter 6 — ACTIVE
+    - [ ] Review: Claude pending
+    - [ ] Verify: Gate 3
 
-### ~REQ-3: {Name} [removed]~
-- Removed iter 3: unnecessary — REQ-1 already covers this case
+    ### REQ-NEW: {Discovered during implementation} [important]
+    - [ ] Added iter 4: found during REQ-2 that we also need {X}
 
-## Active
-- **Claude**: REQ-4 BUILD — implementing auth middleware
-- **Codex**: REQ-2 TEST — adding negative test for SHALL NOT
+    ## Active
+    - Claude: REQ-4 BUILD — implementing auth middleware
+    - Codex: REQ-2 TEST — adding negative test for SHALL NOT
 
-## Blocked
-- REQ-5: waiting on external API key — escalated to user iter 6
+    ## Blocked
+    - REQ-5: waiting on external API key
 
-## Spec Amendments
-Changes to the original spec discovered during implementation:
-- iter 3: REQ-3 removed — duplicate of REQ-1 edge case
-- iter 4: REQ-2 approach changed — original pattern doesn't work with {constraint}
-- iter 4: REQ-NEW added — missing requirement discovered during integration
-- iter 5: REQ-1 EARS criterion amended — "SHALL respond in <100ms" unrealistic, changed to <500ms
+    ## Spec Amendments
+    - iter 3: REQ-3 removed — duplicate of REQ-1 edge case
+    - iter 4: REQ-2 approach changed — original pattern doesnt work with {constraint}
+    - iter 4: REQ-NEW added — missing requirement discovered during integration
 
-## Decisions
-- iter 2: chose extract-over-import for {lib} because {reason}
-- iter 3: Codex review caught missing edge case in REQ-1, fixed
-- iter 4: PIVOTED REQ-2 — {why the original approach failed, what we learned}
+    ## Decisions
+    - iter 2: chose extract-over-import for {lib} because {reason}
+    - iter 3: Codex review caught missing edge case in REQ-1, fixed
 
-## Concerns
-- {thing that feels off but isn't blocking yet — flag for tech lead}
-- {pattern that might cause problems later}
+    ## Concerns
+    - {thing that feels off but isnt blocking yet}
 
-## Debugging Notes
-- {pattern that broke and how it was fixed — for CLAUDE.md later}
-```
+    ## Debugging Notes
+    - {pattern that broke and how it was fixed}
 
 **Rules:**
 - Both agents update TODO.md after every action — check off, add, remove, amend
 - When taking a task: mark it with your name + iteration
-- When something feels wrong: add to `## Concerns`, don't just push through
-- When the spec is wrong: add to `## Spec Amendments` AND update the spec file
+- When something feels wrong: add to Concerns section, don't just push through
+- When the spec is wrong: add to Spec Amendments AND update the spec file
 - When Codex is dispatched: tell it to update TODO.md with its progress
 - Claude reads TODO.md at ORIENT step; Codex reads it at session start/resume
 - Blocked items get escalated to user via AskUserQuestion
@@ -348,7 +337,7 @@ When something breaks:
 5. VERIFY — reproducer passes, full suite green, no regressions
 6. DOCUMENT — add reproducer as permanent test, update CLAUDE.md anti-patterns section with what went wrong and the debug approach that worked
 
-After 3 failed attempts on same issue: STOP. Re-read from scratch. Write your understanding to TODO.md under `## Debugging Notes`. The bug is usually a wrong assumption.
+After 3 failed attempts on same issue: STOP. Re-read from scratch. Write your understanding to the Debugging Notes section of TODO.md. The bug is usually a wrong assumption.
 
 ## WHEN TO NOTIFY THE TECH LEAD
 - Milestone gate passed (brief: 'REQ-1 done, moving to REQ-2')

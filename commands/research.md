@@ -203,14 +203,14 @@ Do NOT create other files outside this structure.
 - **Cross-verify**: codex exec (peer review), gemini -p (adversarial critique)
 
 **Codex session management (save $$$):**
-- First codex call in a research topic → capture session ID from output (`session id: {UUID}`)
-- All follow-up codex calls for the SAME topic → use `codex exec resume {SESSION_ID} --skip-git-repo-check "follow-up"` instead of fresh `codex exec`
+- First codex call in a research topic → capture session ID from output (session id: {UUID})
+- All follow-up codex calls for the SAME topic → use codex exec resume {SESSION_ID} --skip-git-repo-check instead of fresh codex exec
 - This retains full conversation context — codex remembers prior conjectures, critiques, and evidence without re-sending
-- Store session ID in TODO.md under a `## Sessions` section: `codex: {UUID}`
-- Gemini has no session resume — each `gemini -p` call is fresh. Keep gemini prompts self-contained with enough context.
+- Store session ID in TODO.md under Sessions section
+- Gemini has no session resume — each gemini -p call is fresh. Keep gemini prompts self-contained with enough context.
 
 **Tool priority for literature**:
-1. `ask_alphaxiv` — synthesized answers grounded in papers (best signal/noise ratio)
+1. ask_alphaxiv — synthesized answers grounded in papers (best signal/noise ratio)
 2. Exa MCP — semantic search for specific topics
 3. WebSearch — broad web search
 4. WebFetch on arxiv.org/html/{id} — only for specific claims in specific papers
@@ -223,7 +223,7 @@ Do NOT create other files outside this structure.
 
 **Mandatory verification protocol**: After any ask_alphaxiv call that claims specific mechanisms:
 1. Pick the 2-3 most critical claimed mechanisms
-2. WebFetch `arxiv.org/html/{paper_id}` for each
+2. WebFetch arxiv.org/html/{paper_id} for each
 3. Search the actual paper text for the claimed method/formula
 4. If not found → mark as FABRICATED in MISTAKES.md, use only the paper's real contribution
 5. If confirmed → mark as VERIFIED in LITERATURE.md with page/section reference
