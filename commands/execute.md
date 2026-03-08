@@ -1,12 +1,14 @@
 ---
-description: Ralph-powered autonomous execution of a spec file with TDD
+description: Autonomous engineering loop — execute a spec with principal engineer posture
 argument-hint: "[spec-path] [--max-iterations N] [--agent-id ID]"
 allowed-tools: Task, Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 ---
 
 # /execute
 
-Execute a specification using a Ralph loop with subagent delegation.
+Execute a specification autonomously. You are a **Principal Engineer** building toward the spec's goal. The user is the **Tech Lead** — they set direction, you execute without waiting for permission.
+
+**The spec is a hypothesis, not a contract.** Implementation reveals what the spec got wrong. Your job is to build something that *actually works*, not to check off boxes. If a REQ is wrong, update it. If a new REQ is needed, add it. If the approach isn't working, pivot. TODO.md is a living document — both Claude and Codex continuously refine it as understanding deepens.
 
 ## Usage
 
@@ -16,135 +18,362 @@ Execute a specification using a Ralph loop with subagent delegation.
 /execute --agent-id 1                            # Multi-agent mode
 ```
 
-## Multi-Agent Mode
+---
+
+## LOCATE SPEC & LOAD CONTEXT
 
 ```bash
-# Terminal 1                          # Terminal 2
-/execute --agent-id 1                  /execute --agent-id 2
+ls docs/specs/*.spec.md 2>/dev/null || ls docs/SPEC.md 2>/dev/null
 ```
 
-Each agent gets own worktree (`.worktrees/agent-{id}/`) and branch.
+Read (in parallel):
+1. The spec file
+2. Project CLAUDE.md (git repo root) — patterns, anti-patterns, past debugging lessons
+3. `docs/HANDBOOK.md` if it exists
+4. `TODO.md` if it exists (resume previous work)
+
+If the spec has a `## Reference Implementations` section, use DeepWiki to read the referenced source code BEFORE writing any implementation code. Understand how the reference works, then scaffold on it.
+
+### Initialize or Resume Codex Partner
+
+Check TODO.md for an existing Codex session. Resume if found, start fresh if not.
+
+```bash
+EXISTING_SESSION=$(grep -oP 'codex_session: \K[a-f0-9-]+' TODO.md 2>/dev/null || echo "")
+
+if [ -n "$EXISTING_SESSION" ]; then
+  codex exec resume "$EXISTING_SESSION" --full-auto --skip-git-repo-check \
+    -o /tmp/codex-output.txt \
+    "Resuming. Read TODO.md — it's our shared roadmap. Check the Active section for your current task. If you finished your last task, check it off, pick the next unassigned one, and mark yourself active." 2>&1
+  CODEX_SESSION_ID="$EXISTING_SESSION"
+else
+  CODEX_OUTPUT=$(codex exec --json --full-auto --skip-git-repo-check \
+    -o /tmp/codex-output.txt \
+    "You are a Principal Engineer pair-programming with Claude on a spec.
+     Read the spec at {SPEC_PATH}. Read project CLAUDE.md. Read TODO.md if it exists.
+
+     TODO.md is our shared roadmap. You and Claude both read and write to it.
+     Your workflow each time you're called:
+     1. Read TODO.md — find your active task or pick the next unassigned one
+     2. Do the work (research, build, test, or review)
+     3. Update TODO.md — check off completed items, note what you did, update Active section
+
+     Start by reporting: which REQs exist, their priorities, what you'd take first." 2>&1)
+  CODEX_SESSION_ID=$(echo "$CODEX_OUTPUT" | grep '"thread.started"' | jq -r '.thread_id')
+fi
+
+# Persist session ID in TODO.md
+grep -q 'codex_session:' TODO.md 2>/dev/null \
+  && sed -i '' "s/codex_session: .*/codex_session: $CODEX_SESSION_ID/" TODO.md \
+  || echo -e "\n## Sessions\ncodex_session: $CODEX_SESSION_ID" >> TODO.md
+```
 
 ---
 
-## IMPORTANT: This skill is the entry point after clearing context
+## THE ENGINEERING LOOP
 
-When users clear context and start a new session to implement a spec, `/execute` is the first command they run. This skill must be fully self-contained — it reads the spec file and has all the context it needs without relying on prior conversation.
+Execute this loop continuously. Each iteration produces **committed, tested, working code.**
 
-## Locate Spec
-
-```bash
-ls docs/specs/*.spec.md 2>/dev/null || ls docs/SPEC.md 2>/dev/null || echo "No specs found in docs/specs/ or docs/SPEC.md"
+```
+┌──────────────────────────────────────────────────────────┐
+│                   ENGINEERING LOOP                        │
+│                                                          │
+│  1. ORIENT    — Read spec + TODO.md. What's next?        │
+│                 What broke last time? Re-read the EARS   │
+│                 criteria for the current REQ.            │
+│                 Every 5 iters: is the roadmap still      │
+│                 right? Are we building the right thing?   │
+│      ↓                                                   │
+│  2. RESEARCH  — Before coding: DeepWiki the reference    │
+│                 implementation. Web search if unsure.     │
+│                 Read the actual API docs, don't guess.    │
+│      ↓                                                   │
+│  3. BUILD     — Implement. Small diffs. One REQ at a    │
+│                 time. Scaffold on reference code.         │
+│                 Commit frequently.                        │
+│      ↓                                                   │
+│  4. TEST      — Run ALL tests. Not just new ones.        │
+│                 If no tests exist, write them FIRST.      │
+│      ↓                                                   │
+│  5. DEBUG     — If tests fail: REPRODUCE → ISOLATE →     │
+│                 UNDERSTAND → FIX → VERIFY → DOCUMENT.    │
+│                 No shotgun debugging.                     │
+│      ↓                                                   │
+│  6. VERIFY    — Three gates per REQ:                     │
+│                 Gate 1: Tests pass                        │
+│                 Gate 2: Every EARS criterion has a test   │
+│                 Gate 3: Integration verification —        │
+│                         run the system, check behavior    │
+│      ↓                                                   │
+│  7. COMMIT    — Clean commit. Update progress.           │
+│      ↓                                                   │
+│  (back to 1, next REQ by priority)                       │
+└──────────────────────────────────────────────────────────┘
 ```
 
-If the user provided a spec path in their message, use that. Otherwise auto-detect from the listing above (most recently modified). If no spec found, ask the user.
+**Golden rule**: Never move past BUILD without passing TEST. The loop is: `build → test → debug → test → debug → test → (green) → verify → review → commit`.
 
-**Also read the project CLAUDE.md** (at the git repo root) for patterns, anti-patterns, and conventions before starting execution.
+**Process REQs in Priority Stack order** (critical first), not REQ number order.
 
-**Also read `docs/HANDBOOK.md`** if it exists. The handbook contains:
-- Related research (Knowledge Tree) — prior findings that inform implementation decisions
-- Related discoveries — hypotheses and evidence relevant to the feature
-- Cross-references — connections between topics
-- Operational notes — codebase gotchas, patterns that work, anti-patterns to avoid
+### Work Splitting with Codex
 
-Pull relevant context from the handbook into your implementation planning. After execution completes, update the Operational Notes section with any new gotchas or patterns learned during implementation.
+For specs with 4+ REQs, split work between Claude and Codex:
 
-## Initialize Ralph Loop
+**Assignment strategy:**
+- **Claude takes**: core architecture, complex integrations, files with many dependencies
+- **Codex takes**: self-contained REQs, utility modules, test scaffolding, reference extraction
+- **NEVER** assign the same files to both simultaneously
+
+To assign a REQ to Codex:
+```bash
+codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+  -o /tmp/codex-build.txt \
+  "Implement REQ-N: {name}.
+   EARS criteria (verbatim from spec):
+   - WHEN {trigger}, the system SHALL {behavior}
+   Patterns from CLAUDE.md: {relevant patterns}
+   Files to modify: {list}
+   Write tests FIRST, then implement. Commit when green."
+```
+
+**IMPORTANT:** After Codex implements, YOU must verify independently. Never trust agent success reports.
+
+### Mutual Code Review
+
+After each REQ implementation, the other party reviews.
+
+**When YOU implemented — dispatch Codex to review:**
+```bash
+codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+  -o /tmp/codex-review.txt \
+  "Code review for REQ-N: {name}.
+   Run: git diff HEAD~1
+   Check against EARS criteria: {paste criteria}
+   Check for: correctness, edge cases, pattern violations (see CLAUDE.md), test coverage gaps.
+   Format: APPROVE / REQUEST_CHANGES with specific file:line feedback."
+```
+
+**When CODEX implemented — you review:**
+1. `git diff` to see what Codex changed
+2. Read each modified file
+3. Verify against EARS criteria
+4. Run the tests yourself
+5. If issues: dispatch fix via `codex exec resume $CODEX_SESSION_ID`
+
+No REQ is DONE until reviewed by the other party.
+
+---
+
+## INITIALIZE RALPH LOOP
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
   --max-iterations "${MAX_ITER:-100}" \
   --completion-promise "ALL_REQUIREMENTS_VERIFIED" \
-  "You are an execution orchestrator. Find the spec file from conversation context or auto-detect it.
+  "You are a Principal Engineer executing a spec autonomously.
 
 ## SPEC DETECTION
 1. If the user specified a spec path, use that
-2. Otherwise: look for the most recent file in docs/specs/*.spec.md
-3. If none found: look for docs/SPEC.md
-4. If still none: ask the user via AskUserQuestion
+2. Otherwise: most recent file in docs/specs/*.spec.md
+3. If none: docs/SPEC.md
+4. If none: ask via AskUserQuestion
 
-Read the spec file. Extract all requirements (REQ-N items).
-Read the '## Execution Strategy' section to determine mode: solo, subagent, or team.
-If no strategy section exists, default to 'subagent'.
+Read the spec. Read project CLAUDE.md (including anti-patterns/gotchas — don't repeat past mistakes). Read TODO.md if it exists.
 
----
+If the spec has Reference Implementations, use DeepWiki to read the actual source code before implementing. Understand the reference, then scaffold on it. COPY BEFORE REWRITE — never rewrite from memory.
 
-## MODE: solo
+## THE SPEC IS A HYPOTHESIS
 
-Write code directly. No Task tool delegation.
-Process REQs sequentially: RED test → GREEN implementation → REFACTOR.
-Best for 1-3 simple REQs. Minimize overhead.
+The spec is your starting point, not your prison. Implementation reveals truth that planning cannot.
 
----
+- If a REQ doesn't work as specified → amend it in TODO.md AND the spec file
+- If you discover a missing requirement → add it to TODO.md and the spec
+- If a REQ is redundant or wrong → strike it from TODO.md, note why in Spec Amendments
+- If the approach needs to pivot → document the pivot in Decisions, update the roadmap
+- Every 5 iterations → step back: "Is the roadmap still right? Are we building the right thing?"
+- If concerns are accumulating → escalate to user. Don't grind through a bad plan.
 
-## MODE: subagent (default)
+Your job is not to check boxes. Your job is to build something that actually works.
 
-Delegate ALL implementation to subagents via Task tool. You coordinate, you don't write code directly.
+## EXECUTION MODE
 
-Each Iteration:
-1. READ the spec file for pending requirements
-2. IDENTIFY the next incomplete requirement
-3. DELEGATE to backend-engineer or frontend-engineer subagents with full context
-4. VERIFY their work (run tests, check output)
-5. DELEGATE code-simplifier to review and clean up the implementation
-6. UPDATE progress in the spec file
+Assess the spec scope:
+- 1-3 REQs, same files → work directly (no delegation overhead)
+- 4+ REQs or multiple layers → split between Claude + Codex + subagents
 
----
+For subagent delegation:
+1. RE-READ the spec (check for updates from previous iterations)
+2. IDENTIFY next incomplete REQ by priority
+3. If reference code exists for this REQ: read it via DeepWiki first
+4. DELEGATE with full context: EARS criteria verbatim, files to modify, patterns from CLAUDE.md
+5. VERIFY their work independently (never trust agent success reports)
+6. UPDATE progress
 
-## MODE: team
+## CODEX PAIR PROGRAMMING
 
-Use agent teams for parallel execution of independent REQ groups.
+On first iteration: initialize Codex session (see LOCATE SPEC section). On subsequent iterations: resume using session ID from TODO.md.
 
-### Setup (first iteration only):
-1. Read the REQ Groups table from the spec
-2. Create a team: Teammate tool with operation 'spawnTeam', team_name from spec feature name
-3. Create one TaskCreate per REQ group (include the REQs, target files, and acceptance criteria in the description)
-4. Spawn one teammate per group via Task tool with team_name parameter:
-   - subagent_type: backend-engineer or frontend-engineer (match the group's layer)
-   - mode: 'plan' (require plan approval so you can gate before implementation)
-   - Prompt: 'Read the spec at [path]. Implement [REQ-X, REQ-Y] using TDD. Claim your task from the task list.'
-5. Keep teammate count <= number of REQ groups (never spawn more than needed)
+### Work Splitting Rules
+- Assess each REQ: is it self-contained enough for Codex?
+- Codex gets: utility modules, test scaffolding, reference extraction, simple CRUD, isolated features
+- Claude keeps: core architecture, complex integrations, cross-cutting concerns
+- NEVER assign same files to both simultaneously — check TODO.md Active section
+- When assigning Codex a task, tell it: "Update TODO.md when done — check off items, update Active"
 
-### Coordination (subsequent iterations):
-1. Check TaskList for completed/blocked tasks
-2. Review and approve teammate plans (SendMessage with plan_approval_response)
-3. If a teammate is stuck, send guidance via SendMessage
-4. When all tasks complete, run verification gate yourself
-5. Shutdown teammates (SendMessage with shutdown_request), then Teammate cleanup
+### Review Protocol
+- After you finish a REQ → dispatch Codex review → read output → address feedback → then mark DONE
+- After Codex finishes a REQ → git diff → read changes → verify tests → provide feedback → then mark DONE
+- No REQ is DONE until reviewed by the other party
 
-### Token efficiency rules:
-- Never broadcast when a direct message works
-- Max 4 teammates (diminishing returns beyond that)
-- Group small REQs together — don't spawn a teammate for a one-liner
-- If only 2 REQ groups, prefer subagent mode unless each group is large (3+ REQs)
+### TODO.md is the Shared Roadmap
+- Both agents read TODO.md at the start of every iteration
+- Both agents update it after every action (check off items, move Active, add notes)
+- Session IDs stored in `## Sessions` section
+- Decisions and debugging notes accumulate for later CLAUDE.md update
+- Always `codex exec resume $SESSION_ID` — never start fresh mid-execution
 
----
+## THE THREE VERIFICATION GATES (per REQ)
 
-## Progress Tracking (all modes)
-After verifying each requirement, update the progress table in the spec file:
+All three must pass. Not one. Not two. All three.
 
-| ID | Status | Notes |
-|----|--------|-------|
-| REQ-1 | COMPLETED | - |
-| REQ-2 | IN_PROGRESS | - |
+### Gate 1: Tests Pass
+Run test command, show output. Green or no proceed.
 
-## Before Completion:
-DELEGATE qa-engineer to verify everything (test coverage, edge cases, integration)
+### Gate 2: EARS Coverage
+Re-read the EARS criteria. For EACH criterion:
+- WHEN [trigger] → test exists for this trigger
+- SHALL [behavior] → test asserts this behavior
+- SHALL NOT [prohibition] → test proves this doesn't happen
+- IF [condition] → both branches tested
 
-## Verification Gate:
-Run the project's test/build/lint commands and show actual output.
-Common patterns: npm test, pytest, cargo test, go test, make test
-Detect from package.json, pyproject.toml, Cargo.toml, Makefile, etc.
+Missing criterion = missing test = REQ not done.
 
-## Post-Implementation: Update Handbook
-If docs/HANDBOOK.md exists, update the Operational Notes section with:
-- Any codebase gotchas encountered during implementation
-- Patterns that worked well (reusable for future specs)
-- Anti-patterns discovered (traps to avoid)
-Keep entries concise — one line each, with context of where it applies.
+### Gate 3: Integration Verification
+Read the spec's integration verification steps for this REQ.
+Start the system. Perform the action. Compare actual vs expected.
+If no integration steps in spec: write them yourself, then run them.
 
-## Completion:
-When ALL requirements pass with tests + build + lint clean:
+Unit tests prove code logic. Integration proves the feature works.
+
+## TODO.md — LIVING ROADMAP
+
+TODO.md is the single source of truth. Both Claude and Codex read it every iteration and **continuously refine it**. Initialize from the spec's Priority Stack, then evolve as implementation reveals reality.
+
+**This is NOT a frozen checklist.** It's a living plan that gets smarter every iteration:
+- **Add tasks** when you discover something the spec missed
+- **Remove/modify tasks** when a REQ turns out to be wrong or unnecessary
+- **Split tasks** when one turns out to be bigger than expected
+- **Reorder priorities** when implementation reveals dependencies the spec didn't anticipate
+- **Add `## Spec Amendments`** when reality contradicts the spec — update the spec file too
+- **Flag concerns** when something feels off — don't just grind through it
+
+```markdown
+# TODO: {Spec Name}
+
+## Sessions
+codex_session: {UUID}
+
+## Roadmap
+Initialized from spec. LIVING — add, remove, reorder as understanding deepens.
+
+### REQ-1: {Name} [critical]
+- [x] Research: read reference implementation — Claude, iter 1
+- [x] Build: implement core logic — Claude, iter 2
+- [x] Test: write EARS tests (3/3 criteria) — Claude, iter 2
+- [x] Review: Codex APPROVED — iter 3
+- [x] Verify: Gate 3 integration — Claude, iter 3
+
+### REQ-2: {Name} [critical] ← REVISED iter 4: original approach didn't work, pivoted to {new approach}
+- [x] Research: extract pattern from {ref} — Codex, iter 2
+- [x] Build: implement utility module — Codex, iter 3
+- [ ] ~Build: original approach (ABANDONED — see Decisions)~
+- [x] Build: new approach using {X} — Codex, iter 5
+- [ ] Test: missing SHALL NOT test — Codex, iter 6 ← ACTIVE
+- [ ] Review: Claude pending
+- [ ] Verify: Gate 3
+
+### REQ-NEW: {Discovered during implementation} [important]
+- [ ] Added iter 4: found during REQ-2 that we also need {X}
+- [ ] Build
+- [ ] Test
+- [ ] Review
+
+### ~REQ-3: {Name} [removed]~
+- Removed iter 3: unnecessary — REQ-1 already covers this case
+
+## Active
+- **Claude**: REQ-4 BUILD — implementing auth middleware
+- **Codex**: REQ-2 TEST — adding negative test for SHALL NOT
+
+## Blocked
+- REQ-5: waiting on external API key — escalated to user iter 6
+
+## Spec Amendments
+Changes to the original spec discovered during implementation:
+- iter 3: REQ-3 removed — duplicate of REQ-1 edge case
+- iter 4: REQ-2 approach changed — original pattern doesn't work with {constraint}
+- iter 4: REQ-NEW added — missing requirement discovered during integration
+- iter 5: REQ-1 EARS criterion amended — "SHALL respond in <100ms" unrealistic, changed to <500ms
+
+## Decisions
+- iter 2: chose extract-over-import for {lib} because {reason}
+- iter 3: Codex review caught missing edge case in REQ-1, fixed
+- iter 4: PIVOTED REQ-2 — {why the original approach failed, what we learned}
+
+## Concerns
+- {thing that feels off but isn't blocking yet — flag for tech lead}
+- {pattern that might cause problems later}
+
+## Debugging Notes
+- {pattern that broke and how it was fixed — for CLAUDE.md later}
+```
+
+**Rules:**
+- Both agents update TODO.md after every action — check off, add, remove, amend
+- When taking a task: mark it with your name + iteration
+- When something feels wrong: add to `## Concerns`, don't just push through
+- When the spec is wrong: add to `## Spec Amendments` AND update the spec file
+- When Codex is dispatched: tell it to update TODO.md with its progress
+- Claude reads TODO.md at ORIENT step; Codex reads it at session start/resume
+- Blocked items get escalated to user via AskUserQuestion
+- **Every 5 iterations**: step back and ask "is the roadmap still right? are we building the right thing?"
+
+## DEBUGGING PROTOCOL
+
+When something breaks:
+1. REPRODUCE — minimal test that triggers the failure
+2. ISOLATE — binary search: which component/line?
+3. UNDERSTAND — WHY does it fail? Trace the data flow.
+4. FIX — minimum change, proportional to the bug
+5. VERIFY — reproducer passes, full suite green, no regressions
+6. DOCUMENT — add reproducer as permanent test, update CLAUDE.md anti-patterns section with what went wrong and the debug approach that worked
+
+After 3 failed attempts on same issue: STOP. Re-read from scratch. Write your understanding to TODO.md under `## Debugging Notes`. The bug is usually a wrong assumption.
+
+## WHEN TO NOTIFY THE TECH LEAD
+- Milestone gate passed (brief: 'REQ-1 done, moving to REQ-2')
+- Architecture-level decision with trade-offs
+- Blocked by external dependency or access
+- The approach won't work, need to pivot
+
+Do NOT ask permission for implementation decisions within scope. Build, commit, they'll redirect.
+
+## POST-IMPLEMENTATION
+
+After all REQs pass all gates:
+1. Update project CLAUDE.md with everything learned: gotchas, patterns, anti-patterns, debugging approaches that worked
+2. Update docs/HANDBOOK.md Operational Notes if it exists
+
+## COMPLETION
+
+When the system works correctly — not when all original boxes are checked:
+- All ACTIVE requirements (original + discovered) pass three gates
+- Removed/amended REQs are documented in Spec Amendments with rationale
+- Concerns section is empty or acknowledged by user
+- Build + lint clean
+- TODO.md reflects the final state of what was actually built
+- Spec file updated to match reality (not the other way around)
+
 <promise>ALL_REQUIREMENTS_VERIFIED</promise>
 If blocked: <promise>BLOCKED: [reason]</promise>"
 ```
@@ -156,18 +385,20 @@ echo "════════════════════════�
 echo "Promise: ALL_REQUIREMENTS_VERIFIED"
 echo ""
 echo "Only output promise when:"
-echo "  ✓ ALL requirements implemented with passing tests"
+echo "  ✓ The system ACTUALLY WORKS — not just boxes checked"
+echo "  ✓ All ACTIVE requirements (original + discovered) pass THREE gates"
+echo "  ✓ Gate 3: Integration verification — run it, see it work"
+echo "  ✓ Spec file updated to match what was actually built"
+echo "  ✓ TODO.md Spec Amendments documented with rationale"
+echo "  ✓ TODO.md Concerns section empty or user-acknowledged"
 echo "  ✓ Build + lint clean (show actual output)"
+echo "  ✓ CLAUDE.md updated with lessons learned"
 echo ""
 echo "Do NOT output promise just because you're stuck or tired."
+echo "Do NOT skip Gate 3. Tests passing ≠ feature working."
+echo "Do NOT grind through a bad spec. Amend it."
 echo "═══════════════════════════════════════════════════════════════════"
 ```
-
----
-
-## TDD Protocol
-
-RED -> GREEN -> REFACTOR for each requirement.
 
 ---
 

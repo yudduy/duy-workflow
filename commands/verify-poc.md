@@ -11,12 +11,11 @@ Deploy parallel agents to verify implementations and surface frontier research r
 
 ---
 
-## Step 0: Read Handbook + Quick Environment Check
+## Step 0: Read Vault Index + Quick Environment Check
 
-If `docs/HANDBOOK.md` exists, read it first. Check for:
-- Related research that informs what's "correct" for these techniques
-- Previous verifications of similar techniques
-- Known gotchas from Operational Notes
+Read `Obsidian-Template-Vault/VAULT-INDEX.md`. Check for:
+- Related distillations and MOCs that inform what's "correct" for these techniques
+- Previous research on similar techniques
 
 Before technique verification, run a fast sanity check:
 
@@ -240,12 +239,12 @@ Agent 2 (Entropic Advantage):
 
 ---
 
-## Step 4: Update Handbook
+## Step 4: Update Knowledge Graph
 
-If `docs/HANDBOOK.md` exists, update it:
-- Add verification findings to Operational Notes (gotchas discovered, technique-specific pitfalls)
-- If frontier research surfaced new techniques, add a note in Cross-References pointing to the verification report
-- This ensures future `/research` and `/discover` runs benefit from verification learnings
+If relevant insights were learned during verification:
+- Create `Insight - {Claim}.md` in `Obsidian-Template-Vault/3. Resources (Dynamic)/Insights/` for reusable gotchas or technique-specific findings
+- Update the relevant MOC if one exists
+- This ensures future `/research` and `/discover` KG Surveys benefit from verification learnings
 
 ## Key Points
 

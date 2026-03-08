@@ -5,101 +5,108 @@ argument-hint: "[feature description]"
 
 # /interview
 
-Generate an unambiguous SPEC.md through codebase exploration, structured interview, and verification.
+Generate a precise, verifiable SPEC.md through codebase exploration, reference discovery, and iterative refinement with the user.
 
-**IMPORTANT:** This skill uses **plan mode**. Enter plan mode immediately at the start. All exploration, interviewing, and spec drafting happen inside plan mode. Only exit plan mode once the spec is finalized and the user approves.
+**IMPORTANT:** This skill uses **plan mode**. Enter plan mode immediately at the start. Only exit plan mode once the spec is finalized and the user approves.
 
 ---
 
-## STEP 0: ENTER PLAN MODE + CREATE TODO LIST
+## STEP 0: ENTER PLAN MODE
 
 **Immediately call `EnterPlanMode`** before doing anything else.
 
-Then create a todo list using `TaskCreate` to track progress through all phases:
-
-1. "Explore codebase for architecture, patterns, and conventions"
-2. "Conduct structured interview with user"
-3. "Generate SPEC.md from interview answers"
-4. "Verify spec against codebase and SOTA research"
-5. "Get user approval and hand off to /execute"
-
-Mark each task as `in_progress` when starting it and `completed` when done.
-
 ---
 
-## PHASE 1: CODEBASE EXPLORATION
+## PHASE 1: UNDERSTAND BEFORE ASKING
 
-Before asking questions, understand the codebase.
+Before asking a single question, do three things in parallel:
 
-**Quick orientation:**
+### 1A: Know Your Codebase
+- Read project CLAUDE.md (git repo root), `docs/HANDBOOK.md` if it exists
+- Quick orientation: structure, entry points, how to run/test/build
+- Grep for functionality related to what the user described — **does this already exist?**
+
+### 1B: Know the World
+- **Web search:** How have others built this? What are the established patterns?
+- **DeepWiki:** For any GitHub projects relevant to this domain, ask how they implement it. Get architecture, key files, interfaces.
+- **Libraries:** If a library might help, use DeepWiki to read its actual source. Don't guess APIs — read them. Evaluate extract-vs-import (Karpathy pattern).
+
+### 1C: Dispatch Codex Explorer (in parallel with 1A + 1B)
+
+Launch Codex to independently explore the codebase and research references:
+
 ```bash
-ls -la && ls package.json pyproject.toml Cargo.toml go.mod 2>/dev/null
-git log --oneline -10 2>/dev/null
+CODEX_OUTPUT=$(codex exec --json --full-auto --skip-git-repo-check \
+  -o /tmp/codex-interview-output.txt \
+  "You are exploring a codebase to help design a feature: {USER'S FEATURE DESCRIPTION}.
+   1. Read project CLAUDE.md and docs/HANDBOOK.md if they exist
+   2. Find all code related to: {keywords from user's request}
+   3. Search for reference implementations of similar features (use DeepWiki for GitHub repos)
+   4. Summarize: what exists, what patterns to follow, what reference code to scaffold from
+   5. List specific files and functions that would need modification" 2>&1)
+CODEX_SESSION_ID=$(echo "$CODEX_OUTPUT" | grep '"thread.started"' | jq -r '.thread_id')
+echo "Codex session: $CODEX_SESSION_ID"
 ```
 
-**Read the Handbook:** Check for `docs/HANDBOOK.md`. If it exists, read it first:
-- Knowledge Tree — has this topic (or a related one) already been researched?
-- Discovery Tree — any relevant hypotheses or findings?
-- Cross-References — connections that inform the feature design
-- Operational Notes — known gotchas, working patterns, anti-patterns
-Surface relevant handbook context to the user during the interview.
+Store `$CODEX_SESSION_ID` — resume this session throughout the interview and pass it to /execute.
 
-**Parallel exploration** (Task tool, Explore subagents):
-- Architecture: structure, entry points, patterns
-- Testing: frameworks, conventions, existing test examples
-- Dependencies: external integrations, APIs
-- Existing CLAUDE.md: read the project's CLAUDE.md (at the **git repo root**, not home directory) for patterns, anti-patterns, and gotchas
+### 1D: Present What You Found
+Before interviewing, show the user:
+1. "Here's what already exists in your codebase that's related: [X]"
+2. "Here's how [project A] and [project B] solve this"
+3. "I'd recommend scaffolding on [X]'s approach because [reason]"
+4. "Codex independently found: [summarize /tmp/codex-interview-output.txt]"
+5. "Here's what I think you want — correct me"
 
-**Web search:** `[framework] best practices`, `[feature domain] patterns`
-
-**Summarize findings** before moving to interview. Present a brief architecture overview to the user so they can correct any misunderstandings early.
+**Update project CLAUDE.md** with any discoveries (new patterns, gotchas, reference implementations).
 
 ---
 
-## PHASE 2: STRUCTURED INTERVIEW
+## PHASE 2: ITERATIVE REFINEMENT
 
-**ALWAYS use AskUserQuestion tool** - never plain text questions.
+**Use AskUserQuestion tool** for all questions.
 
-Conduct **multiple rounds** until all ambiguity is resolved. Do not rush.
+### The Core Loop
 
-- 2-4 questions per round
-- `multiSelect: true` for features/capabilities
-- `multiSelect: false` for either/or decisions
-- Include descriptions explaining trade-offs
-- Reference specific code/patterns discovered in Phase 1 to ground questions
-
-**Categories to cover (do not skip any):**
-- **Requirements:** capabilities, user scenarios, integrations
-- **Constraints:** patterns to follow, performance requirements, existing conventions
-- **Approach:** technical decisions, priorities, which existing code to reuse
-- **Edge cases:** error scenarios, boundary conditions, failure modes
-- **Verification:** acceptance criteria, completion tests, what "done" looks like
-- **Scope boundaries:** what is explicitly NOT in scope
-
-**After each round:** Summarize what you've learned and identify remaining gaps. Continue interviewing until you can write every requirement without guessing.
-
-**Final question — Execution Strategy:**
-
-After all requirements are gathered, assess the spec scope and ask ONE final question.
-
-Skip this question (default to "Subagent delegation") if:
-- 3 or fewer REQs
-- All REQs touch the same files
-
-Otherwise, use AskUserQuestion:
 ```
-header: "Execution"
-question: "This spec has [N] requirements across [layers]. How should it be executed?"
-options:
-  - label: "Subagent delegation (Recommended)"
-    description: "Orchestrator + subagents, sequential TDD. Best cost/speed balance."
-  - label: "Agent team"
-    description: "[N] independent REQ groups detected. Parallel execution across [M] teammates. ~[X]x token cost but faster wall-clock."
-  - label: "Solo"
-    description: "Single agent, no delegation. Lowest cost for small changes."
+You propose what you THINK they mean (grounded in references)
+  → User corrects or confirms
+    → If corrects: SEARCH for what they corrected toward, re-propose
+    → If confirms: move to next requirement
+      → Repeat until user says "that's exactly it"
 ```
 
-Fill in `[N]`, `[M]`, `[X]` with actual counts from your analysis. Group independent REQs by file-overlap — REQs sharing files must stay in the same group.
+**This is NOT a 4-round questionnaire.** It's a conversation that continues until the spec is right. Some features take 2 rounds, some take 8. The user's confirmation is the exit condition, not a round count.
+
+### What to Cover (naturally, not as a checklist)
+
+- **Intent:** What problem does this solve? What does "done" look like?
+- **Scope:** What's the MVP? What explicitly waits for v2?
+- **Behavior:** For each capability, what exactly happens? (WHEN X, system SHALL Y)
+- **Edges:** What happens when things go wrong?
+- **Priority:** If you can only ship 3 things, which 3?
+
+### Reactive Research
+
+**When the user mentions something you can't ground in concrete knowledge, SEARCH IMMEDIATELY before your next question.** Two options:
+1. Dispatch a Claude subagent to web search or DeepWiki
+2. Resume Codex to investigate (it has DeepWiki + filesystem access):
+   ```bash
+   codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+     -o /tmp/codex-reactive.txt \
+     "Research {topic the user just mentioned}. Find reference implementations, read their source code via DeepWiki. Report: architecture pattern, key interfaces, gotchas."
+   ```
+
+Then come back with: "You mean X like how [project] does it with [mechanism], or something different?"
+
+Never ask "can you tell me more about X?" when you could search for X in 10 seconds.
+
+### Duplication & MVP Guard
+
+- **Before proposing any REQ:** Check if the codebase already has it
+- **For every REQ:** Ask "is this needed for MVP or can it wait?"
+- **Default to less.** Hardcode what could be configurable. Simplify what could be generic. Build the smallest useful thing.
+- **If you catch yourself inventing REQs the user didn't ask for, stop.** The spec contains what they want, not what you think they should want.
 
 ---
 
@@ -107,89 +114,110 @@ Fill in `[N]`, `[M]`, `[X]` with actual counts from your analysis. Group indepen
 
 **Output:** `docs/specs/{feature-name}.spec.md`
 
+**The spec is a hypothesis, not a contract.** It captures our best understanding NOW. During /execute, implementation will reveal what we got wrong — REQs will be added, removed, amended. That's expected and healthy. The spec should be good enough to start building, not perfect enough to never change.
+
+Every acceptance criterion uses EARS format:
+- **WHEN** [event], the system **SHALL** [action]
+- **IF** [condition], **THEN** the system **SHALL** [action]
+- The system **SHALL NOT** [prohibition]
+
 ```markdown
 # Specification: [Feature Name]
 
-> To implement this spec, clear context and run:
-> `/duy-workflow:execute docs/specs/{this-file}.spec.md`
+> To implement: `/duy-workflow:execute docs/specs/{this-file}.spec.md`
+> This spec is a living document. /execute will amend it as implementation reveals reality.
 
 ## Goal
-[One sentence]
+[One sentence — the problem, not the solution]
+
+## Priority Stack
+1. REQ-X (critical) — must ship
+2. REQ-Y (critical) — must ship
+3. REQ-Z (important)
+4. REQ-W (nice-to-have)
+
+## Reference Implementations
+| Reference | What We're Using | Source | Notes |
+|-----------|-----------------|--------|-------|
+| [project] | [pattern/code] | [repo:file] | [extract vs import] |
 
 ## Requirements
-1. **[REQ-1]** [Testable requirement]
-   - Acceptance: [How to verify]
+
+### REQ-1: [Name]
+**Priority:** critical | important | nice-to-have
+**Scaffolding:** build from scratch | extract from [ref] | use [library]
+**Acceptance (EARS):**
+- WHEN [trigger], the system SHALL [behavior]
+- IF [condition], THEN the system SHALL [alt behavior]
+- The system SHALL NOT [prohibition]
+
+**Verify in running system:**
+- `[command to start]`
+- Do: [action]
+- Expect: [exact output/state]
+
+### REQ-2: [Name]
+...
 
 ## Design Decisions
 | Decision | Choice | Rationale |
 
-## Completion Criteria
-- [ ] All REQs implemented with passing tests
-- [ ] Build + lint clean
-
 ## Edge Cases
-| Case | Expected Behavior |
+| Case | Expected Behavior | REQ |
 
 ## Out of Scope
-- [Explicitly excluded items]
+- [excluded — with WHY]
+
+## Deferred to v2
+- [things intentionally simplified for MVP]
 
 ## Technical Context
-### Key Files
-- `[path]`: [purpose]
-
-### Patterns to Follow
-- [discovered patterns from codebase and CLAUDE.md]
-
-## Execution Strategy
-**Mode:** [solo | subagent | team]
-**REQ Groups:** (only for team mode)
-| Group | REQs | Layer | Files |
+- **Key files:** `[path]`: [purpose]
+- **Patterns:** [from CLAUDE.md and codebase]
+- **Reference code to read:** `[repo]:[file]` — [what to extract]
+- **Run:** `[dev]` / **Test:** `[test]` / **Build:** `[build]`
 ```
 
 ---
 
-## PHASE 4: SPEC VERIFICATION
+## PHASE 4: VERIFY & SHIP
 
-**Before /duy-workflow:execute:** Verify each requirement against reality.
+### Quick Audit
+- [ ] Every REQ traces to something the user asked for (no agent-invented requirements)
+- [ ] Every acceptance criterion is EARS format with no weasel words
+- [ ] Every REQ has integration verification steps
+- [ ] No duplication with existing codebase
+- [ ] MVP-appropriate scope
+- [ ] Reference implementations verified via DeepWiki (code actually exists)
 
-### Step 1: SOTA Research
-Parallel Explore subagents for best practices, current docs, pitfalls.
+### Codebase Check
+Parallel subagents: one per REQ, verify implementability, identify exact files to modify, flag conflicts.
 
-### Step 2: Codebase Verification
-One Explore subagent per REQ (parallel):
-- Verify implementability given current codebase
-- Identify files to modify
-- Check for existing reusable functions (avoid duplication)
-- Flag conflicts or missing dependencies
+Also resume Codex for independent implementability review:
+```bash
+codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
+  -o /tmp/codex-verify.txt \
+  "Review this spec for implementability: {SPEC_PATH}.
+   For each REQ: identify exact files to modify, flag conflicts with existing code, estimate complexity.
+   Flag any REQ that contradicts existing patterns in CLAUDE.md."
+```
 
-### Step 3: Report & Iterate
-Present conflicts/gaps found.
+### Present & Confirm
+Show full spec to user. If they correct anything → update → re-present. Only proceed when confirmed.
 
-**If new issues discovered:** Loop back to Phase 2 (ask clarifying questions via AskUserQuestion), then update spec in Phase 3.
-
-**When clean:** Wait for user confirmation before /duy-workflow:execute.
-
-### Step 4: Update Spec
-Add to spec file:
-- File paths to be modified
-- Documentation links
-- Adjusted requirements
-
-**Principle:** Keep implementation minimal—only requested changes.
+### Update CLAUDE.md
+Add patterns, gotchas, anti-patterns, and reference implementations discovered during this interview.
 
 ---
 
 ## HANDOFF
 
-Present the final spec to the user. Use `ExitPlanMode` to exit plan mode.
-
 ```
-Spec verified: docs/specs/{feature-name}.spec.md
-- [N] requirements verified against codebase
-- Conflicts: [none or list]
+Spec: docs/specs/{feature-name}.spec.md
+- [N] requirements, [M] scaffolded from references
+- Priority: [top critical REQs]
+- CLAUDE.md updated
+- Codex session: $CODEX_SESSION_ID (carries codebase understanding into /execute)
 
-To implement, clear context and run:
-  /duy-workflow:execute docs/specs/{feature-name}.spec.md
+To implement: /duy-workflow:execute docs/specs/{feature-name}.spec.md
 ```
-
-**Always remind the user** to run `/duy-workflow:execute` (or just `/execute`) with the spec path. This is the next step after interview.

@@ -1,6 +1,6 @@
 ---
-description: Distill enduring questions into timeless, incompressible wisdom — decomposes, challenges assumptions, synthesizes with Naval/Deutsch density
-argument-hint: "<question> [--deep] [--refine PATH] [--team] [--max-iterations N]"
+description: Distill enduring questions into timeless, incompressible wisdom — decomposes, challenges assumptions, vary-tests principles, synthesizes with Naval/Deutsch density
+argument-hint: "<question> [--deep] [--refine PATH] [--drill PRINCIPLE] [--max-iterations N]"
 allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 ---
 
@@ -8,14 +8,14 @@ allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, A
 
 Takes a question and produces the incompressible kernel. Not a knowledge dump — the answer that survives mutual scrutiny between the best thinkers on the subject.
 
-The process: decompose the question, challenge its assumptions, research the sub-questions, synthesize upward with compression. The output is clean and readable. The messy work stays internal.
+3-agent team (researcher + philosopher + editor) coordinated by a lead.
 
 ## Flags
 
 - `--deep`: 3x iterations, broader source mining
-- `--refine PATH`: Go deeper on an existing distillation
+- `--refine PATH`: Go deeper on an existing distillation (targets weakest area or OPEN principles)
+- `--drill PRINCIPLE`: Focused deep-dive on a specific principle from an existing distillation
 - `--max-iterations N`: Override default (15, deep: 45)
-- `--team`: Parallel agents: researcher + philosopher + editor
 
 ## Principles
 
@@ -26,16 +26,31 @@ The process: decompose the question, challenge its assumptions, research the sub
 5. **Incompressibility test.** You literally cannot make the final answer shorter without losing something essential.
 6. **Action over theory.** Every insight must cash out in behavior change.
 7. **Challenge assumptions.** Every question rests on presuppositions. Surface them. Attack them. Fork if contested.
+8. **Hard to vary over easy to vary.** A good explanation breaks when you change its details (Deutsch). Principles that survive variation are foundations. Principles that don't are your frontier.
 
 ## Setup
 
 ```bash
-mkdir -p docs/distill
+mkdir -p docs/distill/notes
 ```
 
-Check for `docs/HANDBOOK.md`. If it exists, READ it for related distillations.
+### KG Survey (before researching)
 
-If `--refine` flag was provided, read the existing file and skip to the Ralph Loop.
+Check what the vault already knows:
+
+1. Read `Obsidian-Template-Vault/VAULT-INDEX.md` — scan Distillations table and Knowledge Graph (MOCs)
+2. Identify MOCs relevant to the topic (by title/domain match)
+3. For each relevant MOC: read its `## Key Insights` section (the wikilink list)
+4. For each relevant MOC: read its `## Questions to Explore` section
+5. Compile:
+   - KNOWN: claims already captured as insights (don't re-research these)
+   - OPEN: questions explicitly listed as unresolved
+   - GAPS: what's not covered by any existing MOC
+6. Research ONLY what's in OPEN + GAPS
+
+If the topic matches an existing distillation exactly, this is refinement — read deeper, focus on gaps.
+
+If `--refine` flag was provided, read the existing file and skip to execution.
 
 ## Phase 0: Decompose the Question
 
@@ -55,19 +70,9 @@ Before researching, break the question open:
 
 Write the decomposition to the output file. This IS the first three sections (Question You Asked, Real Question, Root).
 
-## Ralph Loop
+## Output Template
 
-```!
-"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
-  --max-iterations "${MAX_ITER:-15}" \
-  --completion-promise "DISTILLED" \
-  "You are a distillation agent. Produce a DISTILL.md containing the incompressible, timeless answer. Think like Naval and Deutsch had a conversation and you're writing down only what survived their mutual scrutiny.
-
-## OUTPUT FILE
-
-Write to docs/distill/{question-slug}.md:
-
-\`\`\`markdown
+```markdown
 # {Question — short form}
 
 ## The Question You Asked
@@ -82,10 +87,11 @@ Write to docs/distill/{question-slug}.md:
 {1-2 sentences.}
 
 ## First Principles
-{3-7 load-bearing truths — remove any one and the answer collapses.}
+{3-7 load-bearing truths — each vary-tested. Remove any FOUNDATION and the answer collapses.}
 
-1. **Name** — One sentence. [Source]
-2. ...
+1. **Name** — One sentence. [Source] ⬛ FOUNDATION — hard to vary; negating breaks {what}
+2. **Name** — One sentence. [Source] ⬜ OPEN — {what varies}; competing framings: {A vs B}
+...
 
 ## The Answer
 {THE incompressible kernel. 3-7 sentences MAX. Every word load-bearing.}
@@ -103,126 +109,80 @@ Write to docs/distill/{question-slug}.md:
 {1-3 concrete behavioral changes. DO differently, not think differently.}
 
 ## The Next Question
-{The better question you should now be asking.}
+{Driven by the highest-value OPEN principle above. Must state:
+ - Which OPEN principle this emerges from
+ - The competing framings that make it genuinely open
+ - What would resolve it — experiment, evidence, or artifact
+ - Why answering THIS opens more territory than any alternative}
 
 ## Sources (by Lindy-ness)
 ### Timeless (100+ years)
 ### Enduring (10-100 years)
 ### Recent (< 10 years)
-\`\`\`
+```
 
-## ITERATION PHASES
-
-### Phase 1 — DECOMPOSE (iteration 1)
-Break the question into sub-questions. List every presupposition.
-Write Question/Real Question/Root sections.
-Identify which sub-questions map to which output sections.
-
-### Phase 2 — RESEARCH (iterations 2-5)
-Answer sub-questions one at a time. Web search is mandatory.
-
-Source hierarchy:
-1. Thinkers who spent decades on this
-2. Best-regarded books
-3. Long-form essays/interviews (not hot takes)
-4. Meta-analyses and foundational papers
-5. Contrarian voices who disagree with mainstream
-
-Source quality: reject listicles, SEO, opinions without reasoning. Accept first-principles reasoning, skin-in-the-game practitioners, frameworks that explain WHY.
-
-Each iteration:
-1. READ current file
-2. IDENTIFY weakest section
-3. WebSearch + WebFetch for better sources on that section
-4. WRITE sub-question answers into the appropriate output sections
-
-### Phase 3 — CRITICIZE (iterations 6-8)
-Challenge the assumptions you listed in Phase 1.
-
-For EACH presupposition, delegate to a Task (general-purpose) agent:
-
-CRITIC PROMPT:
-A researcher claims this is true: {presupposition}
-It underlies this question: {question}
-WebSearch for evidence AGAINST this claim. Also search FOR it.
-Output: EVIDENCE FOR | EVIDENCE AGAINST | VERDICT (CONFIRMED/REFUTED/CONTESTED) | CONFIDENCE 0-100
-Every claim must have a URL citation.
-
-If REFUTED: rewrite the sections that depended on it.
-If CONTESTED: note both sides in the answer. This is where Contrarian Truth often lives.
-If CONFIRMED: move on.
-
-Also: search for the strongest counterargument to your current Answer section. Steel-man it. Address it directly or incorporate it.
-
-### Phase 4 — SYNTHESIZE + COMPRESS (iterations 9-12)
-Compose sub-question answers upward into First Principles and The Answer.
-
-Compression protocol:
-1. Remove derivatives — if B follows from A, keep only A
-2. Remove context-dependent claims — if not true in another era/culture, cut
-3. Remove hedging — state it directly or cut it
-4. Merge redundancies — two insights saying the same thing → keep the sharper one
-5. Incompressibility test — can you remove a single word? Do it. Repeat.
-
-The Answer must be SHORTER than the sum of your sub-question answers. If it's longer, you're not synthesizing.
-
-### Phase 5 — POLISH (iterations 13-15)
-Final incompressibility test. Every word load-bearing.
-Lindy test: would Seneca, Feynman, or Naval nod? If not, cut.
-
-## QUALITY GATES
+## Quality Gates
 
 Before completing:
 - [ ] 'The Real Question' makes the reader feel understood
 - [ ] Every First Principle traces to bedrock
+- [ ] Every First Principle has a variability annotation (⬛ FOUNDATION or ⬜ OPEN)
+- [ ] At least 2 principles were vary-tested (philosopher agent or self-test)
+- [ ] Every ⬜ OPEN principle states what specifically varies and competing framings
 - [ ] 'The Answer' passes the incompressibility test
 - [ ] Every Key Insight is independently actionable
 - [ ] Contrarian Truth is genuinely contrarian AND evidenced
 - [ ] 'What Changes Tomorrow' is doable in 24 hours
-- [ ] 'The Next Question' is more interesting than the original
+- [ ] 'The Next Question' traces to a specific ⬜ OPEN principle (not generic)
+- [ ] 'The Next Question' was verified as genuinely open via WebSearch
 - [ ] Timeless sources exist (if not, the answer isn't Lindy enough)
 - [ ] Strongest counterargument addressed
-- [ ] At least 2 presuppositions were challenged via adversarial Task agents
+- [ ] At least 2 presuppositions were challenged
 
-## SELF-CHECK (Each Iteration)
-- Did I find genuinely new information?
-- Did the file get SHORTER (not longer)?
-- Would I be embarrassed showing this to Naval? To Deutsch?
-If last 2 iterations produced no meaningful improvement, complete.
+## KG Deposit (runs at completion in all modes)
 
-## REFINEMENT MODE (--refine)
-1. Read existing file
-2. Research ONLY the weakest area
-3. File should get SHORTER or EQUAL, never longer
+After the distillation passes quality gates, deposit findings into the vault knowledge graph.
 
-## COMPLETION
+### Step 1: Write finished output to vault
+Write to `Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/Distillation - {Title}.md`
 
-When ALL quality gates pass AND compression has converged:
-1. Final read-through: is every sentence load-bearing?
-2. If docs/HANDBOOK.md exists, UPDATE it:
-   {Question short form}
-   ├── docs/distill/{slug}.md
-   ├── Core: {one-sentence answer}
-   ├── Thinkers: {key sources}
-   └── Opens: {the next question}
-3. <promise>DISTILLED</promise>
-
-If stuck: <promise>BLOCKED: [reason]</promise>"
+Frontmatter:
+```yaml
+tags:
+  - content/distillation
+  - topics/{topic-slug}
+type: research
+created: {YYYY-MM-DD}
+modified: {YYYY-MM-DD}
+status: completed
 ```
 
-## Team Mode (--team flag)
+### Step 2: Extract atomic insights (3-7 new, not duplicates)
+a. Glob `Obsidian-Template-Vault/3. Resources (Dynamic)/Insights/Insight - *.md` — scan filenames
+b. For each candidate claim: if a similar insight already exists, skip (or update if new evidence strengthens it)
+c. Create new: `Insight - {Claim as Statement}.md` with frontmatter (tags, type: research, belief_confidence 0.5-0.95), claim paragraph, Evidence section, Relationships section with wikilinks
 
-When `--team` is specified, SKIP the Ralph loop above. Three roles: researcher mines sources, philosopher extracts principles and challenges assumptions, editor compresses.
+### Step 3: Update or create MOC
+a. Check if `MOC - {Topic}.md` exists in `3. Resources (Dynamic)/`
+b. If exists: add new insight wikilinks to `## Key Insights`, add distillation link to `## Distillation`, update `modified`
+c. If new: create from template (Overview, Distillation, Key Insights, Research Notes, Questions to Explore, Agent Navigation Notes)
 
-### Setup
+### Step 4: Update indexes
+a. Add/update entry in `MOC - Research Index.md` (in `3. Resources (Dynamic)/`)
+b. Update VAULT-INDEX.md if new MOC or new distillation
+
+---
+
+## Agent Team
+
+Three persistent agents coordinated by a lead ralph loop. Each agent accumulates context across iterations — no one-shot throwaway agents.
+
+### Agent Team
 
 ```
-1. Create team: Teammate tool, operation: 'spawnTeam', team_name: '{question-slug}-distill'
-2. Create output file docs/distill/{slug}.md with template above
-3. Create docs/distill/notes/ directory
-4. Spawn 3 teammates via Task tool with team_name:
+Spawn 3 Task agents (run_in_background: true):
 
-RESEARCHER (model: 'sonnet', subagent_type: general-purpose):
+RESEARCHER (model: sonnet, subagent_type: general-purpose):
 "You are a research miner for a distillation project.
 Question: {question}
 Read docs/distill/{slug}.md for current state.
@@ -234,28 +194,46 @@ WebSearch aggressively for:
 - Contrarian voices who disagree with mainstream
 - Meta-analyses and foundational research
 Write ALL findings to docs/distill/notes/sources.md.
-For each source: key insight (< 20 words), citation, Lindy rating (timeless/enduring/recent).
-When the philosopher or editor need evidence checked, claim their tasks."
+For each source: key insight (< 20 words), citation, Lindy rating (timeless/enduring/recent)."
 
-PHILOSOPHER (model: 'opus', subagent_type: general-purpose):
+PHILOSOPHER (model: opus, subagent_type: general-purpose):
 "You are a first-principles philosopher for a distillation project.
 Question: {question}
 Read docs/distill/{slug}.md for current state.
 Read docs/distill/notes/sources.md for what the researcher found.
-Your job: extract first principles AND challenge assumptions.
-Write reasoning to docs/distill/notes/principles.md.
-For each principle: state it, trace to bedrock (physics/evolution/math/human nature), what breaks if removed.
-For each assumption in the question: WebSearch for evidence against it. Note contested assumptions.
-Find the contrarian truth — what's true but unpopular?"
+Your job: extract first principles, challenge ALL assumptions, AND run the Deutsch vary test on ALL principles.
 
-EDITOR (model: 'opus', subagent_type: general-purpose):
+For each assumption in the question: WebSearch for evidence against it.
+Verdict per assumption: CONFIRMED / REFUTED / CONTESTED + confidence 0-100.
+
+For each principle you identify:
+1. State it. Trace to bedrock. What breaks if removed.
+2. NEGATE it — does the answer survive? If yes → decorative.
+3. SWAP it — find a plausible alternative. WebSearch for evidence.
+4. SCOPE it — universal or domain-specific? WebSearch for counterexamples.
+5. Rate: FOUNDATION (0-30) / CONTESTED (30-70) / OPEN (70-100)
+
+Write to docs/distill/notes/principles.md.
+Format per principle: PRINCIPLE | VARIABILITY SCORE | BEST ALTERNATIVE | WHAT BREAKS IF NEGATED | VERDICT
+
+Find the contrarian truth — what's true but unpopular?
+The OPEN principles are as valuable as the FOUNDATIONS — they're where discoveries hide."
+
+EDITOR (model: opus, subagent_type: general-purpose):
 "You are a ruthless compression editor for a distillation project.
 Question: {question}
 Read docs/distill/{slug}.md for current state.
 Read docs/distill/notes/sources.md and docs/distill/notes/principles.md.
-Your job: compress. Every word must be load-bearing.
+Your job: compress while preserving structural information. Every word must be load-bearing.
 Write compressed drafts to docs/distill/notes/compressed.md.
 Rules: remove derivatives, remove hedging, merge redundancies, incompressibility test.
+
+CRITICAL: preserve variability annotations from principles.md through compression.
+- Every First Principle keeps its ⬛/⬜ marker
+- ⬜ OPEN must state what varies (the frontier)
+- ⬛ FOUNDATION must state what breaks if negated
+- The Next Question must trace to highest-value ⬜ OPEN principle
+
 The distillation should get SHORTER each pass, never longer."
 ```
 
@@ -268,36 +246,53 @@ The distillation should get SHORTER each pass, never longer."
   "You are the distillation lead. Do NOT research or write insights yourself.
 
 Each iteration:
-1. Check TaskList for status
+1. Check on background agents (read their output files)
 2. Read ALL note files in docs/distill/notes/
 3. Synthesize into docs/distill/{slug}.md — apply the template format
-4. Assess quality gates (same as solo mode)
-5. Create follow-up tasks:
-   - Researcher: 'Find sources for {weakest section}' or 'Search for counterargument to {insight}'
-   - Philosopher: 'Trace {principle} to bedrock' or 'Challenge assumption: {assumption}'
+4. Assess quality gates (including variability annotations)
+5. If agents are still running, wait. If done, resume them with follow-up work:
+   - Researcher: 'Find sources for {weakest section}' or 'Verify {OPEN principle} is genuinely unresolved'
+   - Philosopher: 'Vary-test {principle}' or 'Challenge assumption: {assumption}'
    - Editor: 'Compress {section} — currently {N} words, target {N/2}'
 
+Aporia-driven synthesis (your unique responsibility):
+- Review all principles with variability annotations from philosopher
+- Rank OPEN principles by productive tension
+- Drive The Next Question from the confirmed highest-value OPEN principle
+
 When all quality gates pass:
-1. Update docs/HANDBOOK.md
-2. Shutdown teammates (SendMessage type: 'shutdown_request')
-3. Teammate cleanup
-4. <promise>DISTILLED</promise>"
+1. Run KG Deposit (see KG Deposit section below)
+2. <promise>DISTILLED</promise>"
 ```
 
-### Token Efficiency (team mode)
-- Researcher: Sonnet (search-heavy)
+### Token Efficiency
+- Researcher: Sonnet (search-heavy, cheaper)
 - Philosopher + Editor: Opus (deep reasoning)
-- Cross-talk via note files only
+- Cross-talk via note files only (docs/distill/notes/)
 - Lead only synthesizes — never searches or reasons about content
-- Max 3 teammates
+- 3 agents total, persistent across iterations
+
+---
+
+## Refinement Mode (--refine)
+
+1. Read existing file
+2. Identify target: weakest area OR if `--drill PRINCIPLE` specified, focus on that principle
+3. Drilling behavior depends on target type:
+   - ⬜ OPEN principle: search for who's actively working on this. Map competing framings with citations.
+   - ⬛ FOUNDATION principle: run a second vary test with a different framing. If it breaks, reclassify as OPEN.
+   - The Next Question: treat as a new distillation input with parent distillation as context.
+4. File should get SHORTER or EQUAL, never longer
 
 ## Output
 
 ```
-Distilled: docs/distill/{slug}.md
-- First Principles: {N}
+Distilled: Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/Distillation - {Title}.md
+- First Principles: {N} (⬛ Foundations: {F}, ⬜ Open: {O})
 - Key Insights: {M}
 - Sources: {S} (Timeless: {T}, Enduring: {E}, Recent: {R})
 - Presuppositions challenged: {P}
-- Next question: {the question this opens}
+- Principles vary-tested: {V}
+- Next question: {driven by OPEN principle — the question this opens}
+- Drill targets: {list of OPEN principles available for --drill}
 ```
