@@ -167,10 +167,8 @@ No REQ is DONE until reviewed by the other party.
 ## INITIALIZE RALPH LOOP
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
-  --max-iterations "${MAX_ITER:-100}" \
-  --completion-promise "ALL_REQUIREMENTS_VERIFIED" \
-  "You are a Principal Engineer executing a spec autonomously.
+cat > /tmp/ralph-execute-prompt.txt << 'PROMPT_EOF'
+You are a Principal Engineer executing a spec autonomously.
 
 ## SPEC DETECTION
 1. If the user specified a spec path, use that
@@ -364,7 +362,12 @@ When the system works correctly — not when all original boxes are checked:
 - Spec file updated to match reality (not the other way around)
 
 <promise>ALL_REQUIREMENTS_VERIFIED</promise>
-If blocked: <promise>BLOCKED: [reason]</promise>"
+If blocked: <promise>BLOCKED: [reason]</promise>
+PROMPT_EOF
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
+  --max-iterations "${MAX_ITER:-100}" \
+  --completion-promise "ALL_REQUIREMENTS_VERIFIED" \
+  "$(cat /tmp/ralph-execute-prompt.txt)"
 ```
 
 ## Anti-Circumvention Notice

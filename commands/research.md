@@ -178,10 +178,8 @@ mkdir -p docs/research/{topic-slug}/{EXPERIMENTS}
 ## Ralph Loop
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
-  --max-iterations "${MAX_ITER:-50}" \
-  --completion-promise "RESEARCH_COMPLETE" \
-  "You are an autonomous research agent. Your question is in the conversation context above.
+cat > /tmp/ralph-research-prompt.txt << 'PROMPT_EOF'
+You are an autonomous research agent. Your question is in the conversation context above.
 
 ## OUTPUT FILES
 
@@ -488,7 +486,12 @@ When exit condition is met:
 
 5. <promise>RESEARCH_COMPLETE</promise>
 
-If stuck: <promise>BLOCKED: [reason]</promise>"
+If stuck: <promise>BLOCKED: [reason]</promise>
+PROMPT_EOF
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
+  --max-iterations "${MAX_ITER:-50}" \
+  --completion-promise "RESEARCH_COMPLETE" \
+  "$(cat /tmp/ralph-research-prompt.txt)"
 ```
 
 ## Output

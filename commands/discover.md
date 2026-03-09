@@ -213,10 +213,8 @@ Changes to the plan discovered during research:
 ## Ralph Loop
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
-  --max-iterations "${MAX_ITER:-30}" \
-  --completion-promise "DISCOVERY_COMPLETE" \
-  "You are a discovery agent with a persistent Codex thinking partner. Produce a DISCOVERY.md containing the finding that survived adversarial scrutiny, distilled into first principles. The problem statement is in the conversation context above.
+cat > /tmp/ralph-discover-prompt.txt << 'PROMPT_EOF'
+You are a discovery agent with a persistent Codex thinking partner. Produce a DISCOVERY.md containing the finding that survived adversarial scrutiny, distilled into first principles. The problem statement is in the conversation context above.
 
 ## OUTPUT FILES
 
@@ -390,7 +388,12 @@ When the discovery is solid — not when phases are done:
    e. Update VAULT-INDEX.md if new MOC or distillation
 3. <promise>DISCOVERY_COMPLETE</promise>
 
-If stuck: <promise>BLOCKED: [reason]</promise>"
+If stuck: <promise>BLOCKED: [reason]</promise>
+PROMPT_EOF
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
+  --max-iterations "${MAX_ITER:-30}" \
+  --completion-promise "DISCOVERY_COMPLETE" \
+  "$(cat /tmp/ralph-discover-prompt.txt)"
 ```
 
 ## Team Mode (--team flag)
@@ -462,10 +465,8 @@ Rate each flaw 0-100 confidence. Verdict: REJECT / REVISE / ACCEPT.
 ### Lead Coordination
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
-  --max-iterations "${MAX_ITER:-30}" \
-  --completion-promise "DISCOVERY_COMPLETE" \
-  "You are the discovery lead. Do NOT research or hypothesize yourself. You dispatch subagents + Codex and synthesize.
+cat > /tmp/ralph-discover-lead-prompt.txt << 'PROMPT_EOF'
+You are the discovery lead. Do NOT research or hypothesize yourself. You dispatch subagents + Codex and synthesize.
 
 Each iteration:
 1. Read TODO.md — what's active, what's next, any concerns?
@@ -487,7 +488,12 @@ Gemini is fresh each call — self-contained prompts.
 When stopping:
 1. Update DISCOVERY.md with final state
 2. Run KG Deposit (vault-native: write Discovery - {Title}.md to vault Distillations/, extract insights, update MOC, update Research Index with wikilinks not project paths)
-3. <promise>DISCOVERY_COMPLETE</promise>"
+3. <promise>DISCOVERY_COMPLETE</promise>
+PROMPT_EOF
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
+  --max-iterations "${MAX_ITER:-30}" \
+  --completion-promise "DISCOVERY_COMPLETE" \
+  "$(cat /tmp/ralph-discover-lead-prompt.txt)"
 ```
 
 ### Token Efficiency
