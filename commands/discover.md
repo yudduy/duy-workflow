@@ -238,7 +238,7 @@ Initialize on first iteration via Bash tool:
        Your role: independently explore literature, propose directions, critique hypotheses.
        You will be resumed each iteration with new context. TODO.md is our shared roadmap.
        Start: what do you already know about this topic? What directions would you explore first?' 2>&1)
-    CODEX_SESSION_ID=$(echo "$CODEX_OUTPUT" | grep 'thread.started' | jq -r '.thread_id')
+    CODEX_SESSION_ID=$(echo $CODEX_OUTPUT | grep 'thread.started' | jq -r '.thread_id')
 
 Store in TODO.md under ## Sessions. All subsequent calls use: codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check
 
@@ -379,7 +379,7 @@ Before completing:
 
 ## COMPLETION
 
-When the discovery is solid — not when phases are "done":
+When the discovery is solid — not when phases are done:
 1. Update DISCOVERY.md with final state and honest confidence
 2. Run KG Deposit:
    a. Write to vault: Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/Discovery - {Title}.md

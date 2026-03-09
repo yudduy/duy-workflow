@@ -190,7 +190,7 @@ The spec is your starting point, not your prison. Implementation reveals truth t
 - If you discover a missing requirement → add it to TODO.md and the spec
 - If a REQ is redundant or wrong → strike it from TODO.md, note why in Spec Amendments
 - If the approach needs to pivot → document the pivot in Decisions, update the roadmap
-- Every 5 iterations → step back: "Is the roadmap still right? Are we building the right thing?"
+- Every 5 iterations → step back and ask: Is the roadmap still right? Are we building the right thing?
 - If concerns are accumulating → escalate to user. Don't grind through a bad plan.
 
 Your job is not to check boxes. Your job is to build something that actually works.
@@ -218,7 +218,7 @@ On first iteration: initialize Codex session (see LOCATE SPEC section). On subse
 - Codex gets: utility modules, test scaffolding, reference extraction, simple CRUD, isolated features
 - Claude keeps: core architecture, complex integrations, cross-cutting concerns
 - NEVER assign same files to both simultaneously — check TODO.md Active section
-- When assigning Codex a task, tell it: "Update TODO.md when done — check off items, update Active"
+- When assigning Codex a task, tell it to update TODO.md when done — check off items, update Active
 
 ### Review Protocol
 - After you finish a REQ → dispatch Codex review → read output → address feedback → then mark DONE
@@ -325,7 +325,7 @@ TODO.md template (create this file at the start):
 - When Codex is dispatched: tell it to update TODO.md with its progress
 - Claude reads TODO.md at ORIENT step; Codex reads it at session start/resume
 - Blocked items get escalated to user via AskUserQuestion
-- **Every 5 iterations**: step back and ask "is the roadmap still right? are we building the right thing?"
+- **Every 5 iterations**: step back and ask — is the roadmap still right? are we building the right thing?
 
 ## DEBUGGING PROTOCOL
 

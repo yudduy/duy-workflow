@@ -295,7 +295,7 @@ Your own: Generate 2-3 candidate conjectures from LITERATURE.md findings.
 
 **Codex direction proposal** (via Bash):
 
-    codex exec --skip-git-repo-check "ABDUCTIVE REASONING — CONJECTURE GENERATION
+    codex exec --skip-git-repo-check 'ABDUCTIVE REASONING — CONJECTURE GENERATION
     Research question: {question}
     Literature summary: {key findings from LITERATURE.md}
     Known dead ends: {failed approaches}
@@ -304,11 +304,11 @@ Your own: Generate 2-3 candidate conjectures from LITERATURE.md findings.
     2. What direction would you investigate that isnt in the literature?
     3. What assumption is everyone taking for granted but might be wrong?
     For each: formal statement, kill criterion (specific + measurable), what experiment would test it.
-    Propose freely — diverge from the literature if you see something."
+    Propose freely — diverge from the literature if you see something.'
 
 **Gemini direction proposal** (via Bash):
 
-    gemini -p "CONJECTURE GENERATION
+    gemini -p 'CONJECTURE GENERATION
     Research question: {question}
     Whats known: {literature summary}
     Whats failed: {dead ends}
@@ -317,7 +317,7 @@ Your own: Generate 2-3 candidate conjectures from LITERATURE.md findings.
     2. What cross-domain analogy suggests an approach nobodys tried?
     3. Whats the simplest possible explanation that fits the data?
     For each: falsifiable statement + kill criterion + first experiment.
-    Different perspective is the point — dont just echo the literature."
+    Different perspective is the point — dont just echo the literature.'
 
 **Step 2: Merge and triangulate** all candidates (yours + codex + gemini):
 - **Convergence**: multiple models propose similar direction → high prior, strong candidate
@@ -326,11 +326,11 @@ Your own: Generate 2-3 candidate conjectures from LITERATURE.md findings.
 
 **Step 3: Cross-verify the selected conjecture(s)** — run in parallel:
 
-    codex exec --skip-git-repo-check "PEER REVIEW: Conjecture '{statement}'. Kill criterion: '{criterion}'. Evidence: {summary}.
-    Is it falsifiable? Obvious confounds? Simpler explanation? What experiment FIRST? Be direct."
+    codex exec --skip-git-repo-check 'PEER REVIEW: Conjecture {statement}. Kill criterion: {criterion}. Evidence: {summary}.
+    Is it falsifiable? Obvious confounds? Simpler explanation? What experiment FIRST? Be direct.'
 
-    gemini -p "ADVERSARIAL REVIEW: Conjecture '{statement}'. Kill criterion: '{criterion}'.
-    Strongest argument AGAINST? Kill criterion too easy/hard? Whats naive? Similar conjecture that failed? Be ruthless."
+    gemini -p 'ADVERSARIAL REVIEW: Conjecture {statement}. Kill criterion: {criterion}.
+    Strongest argument AGAINST? Kill criterion too easy/hard? Whats naive? Similar conjecture that failed? Be ruthless.'
 
 **Step 4:** Incorporate feedback. If both models flag the same issue → fix before proceeding.
 **Step 5:** Write selected conjecture(s) to CONJECTURES.md with ACTIVE status.
@@ -362,7 +362,7 @@ Run in parallel:
 
 **Codex analysis review** (via Bash):
 
-    codex exec --skip-git-repo-check "RESULTS ANALYSIS
+    codex exec --skip-git-repo-check 'RESULTS ANALYSIS
     Conjecture: {statement}
     Kill criterion: {criterion}
     Experiment: {what was run}
@@ -373,11 +373,11 @@ Run in parallel:
     2. Are there alternative explanations for the same data?
     3. Is the sample size / test adequate?
     4. Whats the confidence level (0-100) youd assign?
-    Disagree freely."
+    Disagree freely.'
 
 **Gemini analysis review** (via Bash):
 
-    gemini -p "RESULTS VERIFICATION
+    gemini -p 'RESULTS VERIFICATION
     Conjecture: {statement}
     Experiment: {method}
     Result: {raw data}
@@ -387,7 +387,7 @@ Run in parallel:
     2. Whats the biggest threat to validity?
     3. What would you need to see to be convinced?
     4. Confidence (0-100)?
-    Different perspective welcome."
+    Different perspective welcome.'
 
 Log all cross-verification results in the Cross-Verification Log table in RESEARCH-PROGRESS.md.
 
@@ -409,15 +409,15 @@ Explicit decision. No drifting. Choose ONE:
 
 **On PIVOT — multi-model direction finding** (run in parallel via Bash):
 
-    codex exec --skip-git-repo-check "PIVOT REQUIRED. Conjecture '{killed conjecture}' died because: {kill reason}.
+    codex exec --skip-git-repo-check 'PIVOT REQUIRED. Conjecture {killed conjecture} died because: {kill reason}.
     Research question: {question}. What weve learned so far: {summary}.
     Given this failure, what direction would you try next? What does the failure itself reveal?
-    Propose 1-2 new conjectures with kill criteria."
+    Propose 1-2 new conjectures with kill criteria.'
 
-    gemini -p "PIVOT REQUIRED. '{killed conjecture}' was killed by: {kill reason}.
+    gemini -p 'PIVOT REQUIRED. {killed conjecture} was killed by: {kill reason}.
     Question: {question}. Dead ends so far: {list}.
     Whats the most promising unexplored direction? What assumption should we drop?
-    Propose 1-2 conjectures. Be contrarian — the obvious directions already failed."
+    Propose 1-2 conjectures. Be contrarian — the obvious directions already failed.'
 Merge proposals with your own. Convergence across models = strong candidate.
 
 Log decision in Decision Trail table in RESEARCH-PROGRESS.md.
@@ -464,26 +464,26 @@ When exit condition is met:
 1. Final DOCUMENT pass — all 6 files complete and consistent
 2. Final cross-verification of conclusion:
 
-       codex exec --skip-git-repo-check "FINAL REVIEW of research conclusion:
+       codex exec --skip-git-repo-check 'FINAL REVIEW of research conclusion:
        Question: {question}
        Answer: {conclusion}
        Confidence: {N}
        Key evidence: {summary}
-       Is this conclusion justified? What caveats should be stated?"
+       Is this conclusion justified? What caveats should be stated?'
 
-       gemini -p "FINAL REVIEW of research conclusion:
+       gemini -p 'FINAL REVIEW of research conclusion:
        Question: {question}
        Answer: {conclusion}
        Confidence: {N}
        Experiments: {summary}
-       Grade this conclusion A-F. What would make it stronger?"
+       Grade this conclusion A-F. What would make it stronger?'
 
 3. Write final Summary block in RESEARCH-PROGRESS.md
 4. If in a vault project, run KG Deposit:
-   a. Write `Discovery - {Title}.md` to `Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/`
+   a. Write Discovery - {Title}.md to Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/
       Frontmatter: tags (content/distillation, content/research, topics/{slug}), type: research, status: completed
-   b. Extract key insights as `Insight - {Claim}.md` (Glob existing first to avoid dupes)
-   c. Update relevant MOC and `MOC - Research Index.md` with wikilinks
+   b. Extract key insights as Insight - {Claim}.md (Glob existing first to avoid dupes)
+   c. Update relevant MOC and MOC - Research Index.md with wikilinks
    d. Update VAULT-INDEX.md if new entries
 
 5. <promise>RESEARCH_COMPLETE</promise>
