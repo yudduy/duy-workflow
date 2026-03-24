@@ -1,256 +1,146 @@
 ---
-description: Deploy agents to verify PoC logic and recommend improvements from frontier research
+description: "Iteratively verify, fix, and improve PoC code before experiments. Finds bugs, fixes them, re-verifies, researches frontier improvements, implements them. Doesn't just report -- delivers working code."
 argument-hint: "[path/to/poc]"
 impact: CRITICAL
-when-to-use: Before running experiments - verifies correctness AND surfaces improvements
+when-to-use: Before running experiments - verifies correctness AND applies improvements
+allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash, Agent, WebSearch, WebFetch, mcp__deepwiki__ask_question, mcp__deepwiki__read_wiki_structure, mcp__claude_ai_alphaxiv__embedding_similarity_search, mcp__claude_ai_alphaxiv__full_text_papers_search, mcp__claude_ai_alphaxiv__agentic_paper_retrieval, mcp__claude_ai_alphaxiv__get_paper_content, mcp__claude_ai_alphaxiv__answer_pdf_queries, mcp__claude_ai_alphaxiv__read_files_from_github_repository
 ---
 
 # /verify-poc
 
-Deploy parallel agents to verify implementations and surface frontier research recommendations.
+Verify, fix, and improve PoC code iteratively. Not a report generator -- an engineer that delivers working, frontier-informed code ready for experiments.
+
+**The user's time is the most expensive resource. Don't hand them a list of bugs. Fix the bugs. Re-verify. Research improvements. Implement them. Hand back working code.**
 
 ---
 
-## Step 0: Read Vault Index + Quick Environment Check
+## Phase 1: Discover + Environment Check
 
-Read `Obsidian-Template-Vault/VAULT-INDEX.md`. Check for:
-- Related distillations and MOCs that inform what's "correct" for these techniques
-- Previous research on similar techniques
+**Run in parallel:**
 
-Before technique verification, run a fast sanity check:
+1. **Technique discovery** (Agent, Explore): Find all algorithm implementations in {path}. Look for paper references (arXiv, DOI), algorithm names, mathematical formulas in comments. Return: technique name, file:line, cited source.
 
-```
-Task tool (Explore, quick): "Environment sanity check for [path]:
+2. **Environment check** (Agent, Explore): Dependencies pinned? Lockfile exists? Checkpoints/recovery? Input validation? Config sanity (token limits, batch sizes, dataset paths)?
 
-1. DEPENDENCIES: Is there a lockfile? (poetry.lock, package-lock.json, Cargo.lock, go.sum)
-   - If no lockfile: WARN - not reproducible
-   - If unpinned versions (>=, ~, ^, *): WARN - floating deps
-
-2. CHECKPOINTS: Does code save intermediate state?
-   - Search for: checkpoint, save_state, serialize, pickle, .json writes
-   - If none found: WARN - no recovery on failure
-
-3. DATA VALIDATION: Are there input assertions?
-   - Search for: assert, raise ValueError, validate, check
-   - If none on inputs: WARN - garbage in → garbage out
-
-Return: [ALL OK] or [WARNINGS: list what's missing]"
-```
+3. **Codebase read** (you): Read ALL source files in {path}. Understand the full architecture before verifying anything.
 
 ---
 
-## Step 1: Discover Techniques
+## Phase 2: Parallel Verification + Research (one agent per technique)
+
+For each discovered technique, spawn a sub-agent:
 
 ```
-Task tool (Explore): "Find all algorithm implementations in [path]. Look for:
-- Paper references (arXiv, DOI)
-- Algorithm names (PUCT, GRPO, PPO, SAC, etc.)
-- Mathematical formulas in comments
+"Verify [TECHNIQUE] at [file:line] against its source.
 
-Return: technique name, file:line, cited source."
+1. RESEARCH: WebSearch for original paper. alphaxiv for the paper content. DeepWiki on reference implementations. Find canonical formula, parameters, known pitfalls.
+
+2. VERIFY line-by-line: Does formula match source? Parameters correct? Edge cases handled? Numerical stability? Report: MATCH / MISMATCH / DEVIATION with specifics.
+
+3. RESEARCH FRONTIER: alphaxiv + WebSearch for improvements since the original paper (2024-2026). What's the SOTA version of this technique? What do practitioners report as common failures?
+
+4. FIND REFERENCE IMPLEMENTATIONS: gh search + WebSearch + DeepWiki for battle-tested implementations of this technique. We will COPY from these, not rewrite.
+
+Output: verification status, list of bugs with exact file:line, frontier improvements with source, reference implementation links."
 ```
 
----
-
-## Step 2: Deploy Verification Agents (parallel)
-
-**One agent per technique.** Each agent does:
-
+**Also in parallel:** Run a code-reviewer sub-agent on the ENTIRE codebase:
 ```
-Task tool (general-purpose): "Verify and improve [TECHNIQUE_NAME] at [file:line].
-
-1. RESEARCH THE TECHNIQUE
-   - WebSearch for original paper/documentation
-   - Find canonical formula and parameters
-   - Note common implementation mistakes
-
-2. READ THE IMPLEMENTATION
-   - Actual code, not just comments
-   - Parameter values, edge case handling
-
-3. VERIFY CORRECTNESS
-   - Does formula match source?
-   - Are parameters correct?
-   - Edge cases handled?
-
-   Report: MATCH | MISMATCH | DEVIATION (with details)
-
-4. RESEARCH FRONTIER IMPROVEMENTS
-   - WebSearch '[technique] improvements 2024 2025'
-   - WebSearch '[technique] best practices'
-   - WebSearch '[technique] common pitfalls'
-   - Look for: newer variants, known issues, optimization tricks
-
-5. GENERATE RECOMMENDATIONS
-   Based on verification AND frontier research:
-   - Critical fixes (implementation bugs)
-   - Performance improvements (from recent papers)
-   - Best practices (from community experience)
-   - Alternative approaches (if technique is outdated)"
+"Review all code in {path} for critical issues ONLY. Skip style.
+1. Correctness: happy path, edge cases, hardcoded limits (token caps, dataset sizes), NaN-producing paths, OOM risks.
+2. Bugs: resource leaks, wrong gradient flow, broken metrics, incorrect loss computation.
+3. Performance: sequential when parallel possible, data bottlenecks, wasted memory.
+4. Config: are hardcoded values appropriate for the task? Token limits? Batch sizes? Learning rates?
+Format: [SEVERITY] file:line -- Issue / Why / Fix"
 ```
 
 ---
 
-## Step 3: Collect Results
+## Phase 3: FIX (iterative -- don't just report)
+
+**For each bug found (CRITICAL and HIGH first):**
+
+1. Read the reference implementation (from Phase 2 research)
+2. COPY the correct implementation from the reference
+3. Adapt to fit the codebase
+4. Edit the file
+
+**For each frontier improvement (if clearly better and low-risk):**
+
+1. Read the reference implementation from the improved variant
+2. Implement it (copy-before-rewrite from reference)
+3. Mark as IMPROVEMENT in the changelog
+
+**Track all changes:**
+```markdown
+## Changes Applied
+| File:Line | Type | What | Reference Source | Before | After |
+|-----------|------|------|-----------------|--------|-------|
+| trainer.py:45 | BUG FIX | Wrong loss scaling | FlowRL repo | scale="default" | scale="none" |
+| config.yaml:12 | BUG FIX | Token limit too low | SPO paper | 512 | 2048 |
+| sampler.py:80 | IMPROVEMENT | Adaptive beta | SAC paper | fixed beta=1.0 | dual gradient descent |
+```
+
+---
+
+## Phase 4: Re-verify (/collab dialectic)
+
+After ALL fixes applied, run iterative cross-verification:
+
+**Round 1: Three reviewers in parallel on the FIXED code:**
+
+- Code-reviewer sub-agent: "Re-verify all techniques against sources. Are the fixes correct? Did fixes introduce new bugs? Run through the checklist again on the MODIFIED files."
+
+- Codex: "ADVERSARIAL REVIEW of these changes: {changelog}. Original code: {before}. Fixed code: {after}. Did the fixes actually address the issues? Any new bugs? Any regression? What's still wrong?"
+
+- Gemini: "ADVERSARIAL REVIEW. Changes applied: {changelog}. Is the math still correct after fixes? Any numerical stability issues introduced? What's the most likely way this STILL fails when we run experiments?"
+
+**Round 2: Cross-pollinate.** Each reviewer sees the other two's findings. Fix any new issues. Re-review.
+
+**Round 3 if needed.** Converge when all 3 say PASS.
+
+---
+
+## Phase 5: Smoke Test (if compute available)
+
+If the PoC includes runnable experiments:
+
+1. Run a 2-step smoke test (--max-steps=2 or equivalent)
+2. Check: starts without error? Loss finite? Metrics collecting (no NaN)? Memory stable?
+3. If smoke test fails: diagnose, fix, re-verify (back to Phase 4), re-smoke-test
+4. **Parallelize independent conditions** -- if there are multiple experimental conditions (e.g., GRPO vs TB vs SegTB), smoke test ALL in parallel, not sequentially
+
+---
+
+## Phase 6: Present (only after all verification passes)
 
 ```markdown
-## PoC Verification: [Name]
+## PoC Verification: {Name}
 
-**Status:** VERIFIED | ISSUES FOUND
+**Status:** VERIFIED AND FIXED | VERIFIED (no issues) | BLOCKED (unfixable issues)
 
-### Environment Check
-- Dependencies: [pinned/unpinned/missing lockfile]
-- Checkpoints: [found/not found]
-- Data validation: [found/not found]
+### Changes Applied
+{changelog table from Phase 3}
 
-### [Technique 1]
+### Verification Results (post-fix)
+| Technique | Status | Reference | Notes |
+|-----------|--------|-----------|-------|
+| {technique} | MATCH | {paper/repo} | {any caveats} |
 
-**Verification:**
-- Source: [paper/doc]
-- Status: MATCH | MISMATCH | DEVIATION
-- Details: [comparison]
+### Frontier Improvements Applied
+| Improvement | Source | Impact |
+|-------------|--------|--------|
+| {what changed} | {paper/repo} | {expected effect} |
 
-**Frontier Research:**
-- Latest variant: [if any newer version exists]
-- Known issues: [from community]
-- Performance tips: [from recent papers]
+### Remaining Concerns
+- {anything that couldn't be fixed or needs user judgment}
 
-**Recommendations:**
-| Priority | Type | Recommendation |
-|----------|------|----------------|
-| HIGH | Bug | [fix implementation error] |
-| MEDIUM | Improvement | [apply recent optimization] |
-| LOW | Best Practice | [style/pattern suggestion] |
+### Smoke Test
+- Status: PASS / FAIL / NOT RUN
+- {results if run}
 
-### [Technique 2]
-...
-
-### Summary
-- Environment warnings: [count]
-- Critical issues: [count]
-- Recommended improvements: [count]
-- Implementation quality: [good/acceptable/needs work]
-
-### Action Items
-1. **[HIGH]** [most critical fix]
-2. **[MEDIUM]** [important improvement]
-3. **[LOW]** [nice to have]
+### Ready for Experiments?
+YES -- code is verified, fixed, and frontier-informed. / NO -- {blocking issues}
 ```
 
----
-
-## Example
-
-**Input:** `/verify-poc poc/`
-
-**Step 0 output:**
-```
-Environment Check:
-- Dependencies: poetry.lock found, all pinned ✓
-- Checkpoints: save_state() found in sampler.py:120 ✓
-- Data validation: WARN - no input assertions on rewards
-```
-
-**Step 1 finds:**
-```
-1. PUCT Sampler (poc/sampler.py:45) - cites arXiv:2601.16175
-2. Entropic Advantage (poc/entropic.py:12) - cites same paper
-```
-
-**Step 2 deploys 2 agents in parallel:**
-
-Agent 1 (PUCT):
-```markdown
-### PUCT Sampler
-
-**Verification:**
-- Source: TTT-Discover (arXiv:2601.16175), AlphaGo Zero
-- Status: MATCH (with documented deviations)
-- c=1.5 vs paper c=1.0: documented
-- group_size used correctly (unlike main codebase bug)
-
-**Frontier Research:**
-- MuZero (2020): Uses learned dynamics model, not applicable here
-- EfficientZero (2021): Sample-efficient variant, could reduce iterations
-- Recent (2024): Progressive widening for continuous action spaces
-- Common pitfall: Using max(Q) instead of mean(Q) for backups
-- Best practice: UCB1-tuned provides better regret bounds
-
-**Recommendations:**
-| Priority | Type | Recommendation |
-|----------|------|----------------|
-| MEDIUM | Improvement | Consider UCB1-tuned variant for tighter exploration |
-| LOW | Best Practice | Add logging for PUCT score components for debugging |
-| INFO | Alternative | EfficientZero's reanalyze could improve sample efficiency |
-```
-
-Agent 2 (Entropic Advantage):
-```markdown
-### Entropic Advantage
-
-**Verification:**
-- Source: TTT-Discover (arXiv:2601.16175), Section 3.3
-- Status: DEVIATION
-- β is fixed at 1.0, paper uses adaptive β targeting KL=ln(2)
-
-**Frontier Research:**
-- SAC (2018): Automatic entropy tuning via dual gradient descent
-- REDQ (2021): Better sample efficiency with ensemble Q
-- Recent (2024): GFlowNet objectives for diverse exploration
-- Common pitfall: Fixed β leads to suboptimal exploration/exploitation
-- Best practice: Adaptive β with KL constraint is standard now
-
-**Recommendations:**
-| Priority | Type | Recommendation |
-|----------|------|----------------|
-| HIGH | Bug | Implement adaptive β (paper shows ~20% improvement) |
-| MEDIUM | Improvement | Use SAC-style dual optimization for β |
-| LOW | Alternative | Consider GFlowNet objective for diversity |
-```
-
-**Final Report:**
-
-```markdown
-## PoC Verification: TTT-Discover PoC
-
-**Status:** ISSUES FOUND
-
-### Environment Check
-- Dependencies: pinned ✓
-- Checkpoints: found ✓
-- Data validation: WARN - add reward assertions
-
-### Summary
-- Environment warnings: 1
-- Critical issues: 1 (adaptive β missing)
-- Recommended improvements: 3
-- Implementation quality: Acceptable (fixes needed)
-
-### Action Items
-1. **[HIGH]** Implement adaptive β before experiments
-2. **[HIGH]** Add input validation for rewards (env check)
-3. **[MEDIUM]** Consider UCB1-tuned for PUCT
-4. **[LOW]** Add PUCT component logging for debugging
-
-### Frontier Techniques to Consider
-- EfficientZero's reanalyze for sample efficiency
-- SAC-style dual optimization for entropy
-```
-
----
-
-## Step 4: Update Knowledge Graph
-
-If relevant insights were learned during verification:
-- Create `Insight - {Claim}.md` in `Obsidian-Template-Vault/3. Resources (Dynamic)/Insights/` for reusable gotchas or technique-specific findings
-- Update the relevant MOC if one exists
-- This ensures future `/research` and `/discover` KG Surveys benefit from verification learnings
-
-## Key Points
-
-- **Step 0** catches "it works on my machine" failures in 30 seconds
-- Each agent: **verifies** correctness AND **researches** improvements
-- Recommendations include **priority** (HIGH/MEDIUM/LOW)
-- Types: Bug, Improvement, Best Practice, Alternative
-- Surfaces **frontier research** - not just "is it correct" but "is it optimal"
-- Output is actionable with clear priorities
+**This report has been iteratively reviewed by Codex + Gemini + Claude sub-agent. The user is the last checkpoint, not the first reviewer.**

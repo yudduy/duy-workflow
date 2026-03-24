@@ -1,497 +1,444 @@
 ---
-description: Ralph-powered autonomous experimental research — forms falsifiable conjectures, runs experiments, uses multi-model cross-verification (Codex + Gemini) for truth-seeking. Not web-search-and-theorize (that's /discover). This runs actual experiments.
-argument-hint: "<research question> [--max-iterations N]"
-allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
+description: "Autonomous experimental research -- maps landscape, forms falsifiable conjectures, pushes toward positive results via keep/discard fitness gates. Multi-model consultation at decisions. Never asks the user."
+argument-hint: "<fundamental problem> [--max-iterations N]"
+allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__deepwiki__ask_question, mcp__claude_ai_alphaxiv__embedding_similarity_search, mcp__claude_ai_alphaxiv__full_text_papers_search, mcp__claude_ai_alphaxiv__agentic_paper_retrieval, mcp__claude_ai_alphaxiv__get_paper_content, mcp__claude_ai_alphaxiv__answer_pdf_queries, mcp__claude_ai_alphaxiv__read_files_from_github_repository
 ---
 
 # /research
 
-Autonomous experimental research loop. Forms falsifiable conjectures with kill criteria, runs actual experiments, and uses multi-model cross-verification for truth-seeking.
+Given a fundamental problem, push toward solving it. Not a literature survey. A result.
 
-**Not /discover.** /discover searches → hypothesizes → stress-tests via web search → distills. /research orients → conjectures → runs experiments → analyzes with multi-model verification → decides (DOUBLE DOWN | PIVOT | DIG DEEPER | ABANDON).
+## Autonomy Rules
 
-## Principles
+- **NEVER AskUserQuestion** for research decisions. Consult Codex/Gemini instead.
+- **Only stop for**: missing credentials, missing access, genuinely unresolvable without human knowledge.
+- **Log every decision** in TODO.md with: what, why, which models consulted, agreement level.
+- **At completion**: write WALKTHROUGH -- the user reviews this when they return.
+- **NEVER present unreviewed work.** The user's time is the most expensive resource. Every output (landscape assessment, conjectures, results, completion) must be iteratively reviewed with Codex/Gemini BEFORE the user sees it. You iterate internally until it's presentable. The user is the LAST checkpoint, not the first reviewer.
 
-1. **Conjectures are falsifiable or worthless.** Every conjecture has a kill criterion. If nothing can kill it, it's not science.
-2. **Experiments over arguments.** Run the thing. Reading about it is phase 1, not the whole loop.
-3. **Multi-model disagreement = signal.** When Codex, Gemini, and Claude disagree, that's where the interesting truth lives.
-4. **Mistakes are data.** Track them explicitly. The pattern of mistakes reveals methodology gaps.
-5. **Kill criteria are sacred.** If the kill criterion is met, the conjecture dies. No rationalizing.
-6. **Decide, don't drift.** Every iteration ends with an explicit decision: DOUBLE DOWN | PIVOT | DIG DEEPER | ABANDON.
+## Anti-Reward-Hacking Gates
+
+Structural, not advisory. Provenance from systems that actually produced discoveries.
+
+1. **Fitness gate**: Every result must pass a computable check -- verify-math, executed experiment, or multi-model consensus. "Looks right" is not verification. (FunSearch: hard evaluator)
+2. **Knowledge Map**: One row per source. Read once, extract, never re-read. The map IS the context. (Robot Scientist Adam)
+3. **Cross-agent falsification**: No self-certification. Codex + Gemini attack every conjecture. (POPPER framework)
+4. **Constraint re-injection**: Every 5 iterations, re-read Research Intent + original problem. Check for drift. (Deutsch: decide, don't drift)
+5. **Sacred kill criteria**: Met = dead. No rationalizing. Dead conjectures stay dead. (FunSearch: hard culling)
+6. **Pre-registration**: Before every experiment, write prediction with metric + threshold. SHA-256 hash. Mechanical comparison after -- no LLM interpretation. (Replication crisis: prevents HARKing)
+7. **Strong inference**: Maintain >=3 competing hypotheses. Design experiments that exclude possibilities. Same-prediction experiments are FORBIDDEN. (Platt 1964)
+8. **Negative result parity**: Append-only experiment log. Negatives get equal documentation. Zero negatives is suspicious, not impressive. (Feynman: cargo cult detection)
+9. **Fresh-context restart**: Every 15-20 iterations, checkpoint to files. Knowledge Map + Ignorance Map + TODO.md carry state. Context starts clean. (60% facts lost per compression)
+10. **Code review before compute**: Every experiment script reviewed for correctness, edge cases, resource leaks BEFORE GPU submission. No unreviewed code burns compute hours. (TDAD: verification before execution)
+11. **Run monitoring**: First 10 steps of every run are monitored for NaN, divergence, OOM. Unhealthy runs killed immediately. (Execution discipline: verify, don't assume)
 
 ## Setup
 
 ```bash
-# Parse research question from $ARGUMENTS
-# Extract --max-iterations if present (default: 50)
-mkdir -p docs/research/{topic-slug}/{EXPERIMENTS}
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+mkdir -p docs/research/{topic-slug}/{EXPERIMENTS,GATES}
+find /tmp -maxdepth 1 -name 'claude-research-*' -type d -mtime +1 -exec rm -rf {} + 2>/dev/null
+WS=/tmp/claude-research-$(openssl rand -hex 4)
+mkdir -p "$WS"
 ```
 
-### Context Loading (before researching)
+All temp paths use `$WS/`. Read project CLAUDE.md/README first. If Obsidian vault: scan VAULT-INDEX.md. Resume from existing docs/research/{topic-slug}/ if present.
 
-1. Read project's CLAUDE.md / README — understand the codebase, test commands, run commands
-2. If in an Obsidian vault: scan VAULT-INDEX.md and relevant MOCs for prior knowledge
-3. Read any existing docs/research/{topic-slug}/ files to resume prior work
+## Output Files -- Field Lists
 
-### Output Files — 6 files, each serves a distinct purpose
+Write to `docs/research/{topic-slug}/`:
 
-**RESEARCH-PROGRESS.md** — THE readable output. Current state, active hypothesis, key results.
+**RESEARCH-PROGRESS.md** -- The readable output. Current state, not history.
+Header: Status (ORIENTING|SEARCHING|CONJECTURING|TESTING|ANALYZING|DECIDING|COMPLETE), Active Conjecture + Confidence, Iteration N/max.
+Sections: The Question (one paragraph, the REAL question), Current Understanding (updated every iter), Landscape Assessment (7 completeness gate answers), Ignorance Map (table: Gap ID | What We Don't Know | Why It Matters | What Would Resolve It | Blocked By), First Principles Audit (table: Constraint | Source | Re-derived? | Verdict | Evidence), The Skeleton (fundamental vs imposed constraints), Research Intent (anchor -- re-read every 5 iters), Key Results (most recent first: experiment, expected, observed, implication), Cross-Verification Log (table: Check | Claude | Codex | Gemini | Agreement | Signal), Decision Trail (table: Iter | Decision | Rationale | Next Action), Summary (status, confidence, answer, experiments run, conjectures tested, key mistake, negative result count).
 
-```markdown
-# Research: {Question}
-> Status: ORIENTING | SEARCHING | CONJECTURING | TESTING | ANALYZING | DECIDING | COMPLETE
-> Active Conjecture: {name} | Confidence: {0-100}
-> Iteration: {N}/{max} | Last updated: {timestamp}
+**CONJECTURES.md** -- Hypothesis tracker. Minimum 3 active (Strong Inference).
+Fields per conjecture: Statement (falsifiable), Kill criterion (specific, measurable), Target gap (G-N from Ignorance Map), Confidence (0-100), Evidence for/against (with citations), Experiments pending, Status (ACTIVE|CONFIRMED|KILLED|REVISED).
+Killed entries add: kill reason, killed by, lesson learned.
 
-## The Question
-[What we're trying to answer. One paragraph. The REAL question behind the question.]
+**EXPERIMENTS/experiment-log.md** -- Chronological, append-only. Negatives get EQUAL detail.
+Fields: Date, Conjecture tested, Pre-registered prediction (hash ref), Method, Raw result, Prediction match (mechanical YES/NO), Analysis, Decision (DOUBLE DOWN|PIVOT|DIG DEEPER|ABANDON).
 
-## Current Understanding
-[What we know NOW. Updated every iteration. Not a history — the current best model.]
+**KNOWLEDGE-MAP.md** -- Persistent research cache. One row per source, never re-read the original.
+Table: Source | ID | Core Contribution | Verified? | Gap/Implication.
+Additional sections: Lineage Tree (how assumptions accumulated from foundational paper to SOTA), Framings table (Framing | Key Papers | Core Assumption | What It Enables | What It Misses).
+Rules: Read once --> extract one row --> never re-read. Fabrications marked FABRICATED.
 
-## Key Results
-[Experiment outcomes that changed our understanding. Chronological, most recent first.]
+**MISTAKES.md** -- Error patterns. Fields: What happened, Root cause, Recurring pattern?, Fix applied. Summary: Pattern | Count | Mitigation.
 
-### Result {N}: {title}
-- **Experiment**: {what was run}
-- **Expected**: {what conjecture predicted}
-- **Observed**: {what actually happened}
-- **Implication**: {what this means for the conjecture}
-
-## Cross-Verification Log
-| Check | Claude | Codex | Gemini | Agreement | Signal |
-|-------|--------|-------|--------|-----------|--------|
-
-## Decision Trail
-| Iter | Decision | Rationale | Next Action |
-|------|----------|-----------|-------------|
-
-## Summary
-- **Status**: CONFIRMED | KILLED | REVISED | IN_PROGRESS
-- **Confidence**: {0-100}
-- **Answer**: {one sentence}
-- **Experiments run**: {N}
-- **Conjectures tested**: {N} (confirmed: {C}, killed: {K}, revised: {R})
-- **Models agreed**: {N}/{total checks}
-- **Key mistake**: {biggest methodological error and what it taught}
-```
-
-**CONJECTURES.md** — All hypotheses with status tracking.
-
-```markdown
-# Conjectures
-
-## Active
-### C-{N}: {Name}
-- **Statement**: {falsifiable claim}
-- **Kill criterion**: {what would disprove this — specific, measurable}
-- **Confidence**: {0-100}
-- **Evidence for**: {bullet list with citations}
-- **Evidence against**: {bullet list with citations}
-- **Experiments pending**: {what remains to test}
-- **Status**: ACTIVE | CONFIRMED | KILLED | REVISED → C-{M}
-
-## Confirmed
-### C-{N}: {Name} ✓
-[same structure, frozen at confirmation]
-
-## Killed
-### C-{N}: {Name} ✗
-- **Kill reason**: {what disproved it}
-- **Killed by**: {experiment or evidence}
-- **Lesson**: {what this taught us}
-
-## Revised
-### C-{N}: {Name} → C-{M}
-- **What changed**: {delta}
-- **Why**: {evidence that forced revision}
-```
-
-**EXPERIMENTS/experiment-log.md** — Chronological experiment record.
-
-```markdown
-# Experiment Log
-
-## E-{N}: {Title}
-- **Date**: {timestamp}
-- **Conjecture**: C-{N}
-- **Hypothesis**: {what we expected}
-- **Method**: {exact steps, commands, code}
-- **Result**: {what happened — data, not interpretation}
-- **Analysis**: {what this means}
-- **Decision**: DOUBLE DOWN | PIVOT | DIG DEEPER | ABANDON
-```
-
-**LITERATURE.md** — Structured notes from papers and sources.
-
-```markdown
-# Literature
-
-## Key Papers
-### {Author} {Year} — {Title}
-- **Finding**: {one sentence}
-- **Relevance**: {how it connects to our question}
-- **Limitations**: {what it doesn't cover}
-- **URL**: {link}
-
-## Key Implementations
-### {Repo/Tool} — {What it does}
-- **Approach**: {how it works}
-- **Results**: {their reported metrics}
-- **Gap**: {what's missing that we're investigating}
-```
-
-**MISTAKES.md** — What went wrong and why. Pattern detection.
-
-```markdown
-# Mistakes
-
-## M-{N}: {Title}
-- **What happened**: {the error}
-- **Why**: {root cause}
-- **Pattern**: {is this a recurring type of mistake?}
-- **Fix**: {what we changed in methodology}
-
-## Recurring Patterns
-| Pattern | Count | Mitigation |
-|---------|-------|------------|
-```
-
-**TODO.md** — Next actions, prioritized.
-
-```markdown
-# TODO
-
-## Immediate (this iteration)
-- [ ] {action}
-
-## Next (upcoming iterations)
-- [ ] {action}
-
-## Blocked
-- [ ] {action} — blocked by: {what}
-
-## Done
-- [x] {action} — iter {N}
-```
+**TODO.md** -- Roadmap. Sections: Sessions (codex_session UUID), Immediate, Next, Blocked, Done, Decisions log, Concerns, Walkthrough (at completion).
 
 ## Ralph Loop
 
 ```!
-cat > /tmp/ralph-research-prompt.txt << 'PROMPT_EOF'
-You are an autonomous research agent. Your question is in the conversation context above.
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+find /tmp -maxdepth 1 -name 'claude-research-*' -type d -mtime +1 -exec rm -rf {} + 2>/dev/null
+WS=/tmp/claude-research-$(openssl rand -hex 4)
+mkdir -p "$WS"
+RALPH_PROMPT="$WS/ralph-prompt.txt"
+cat > "$RALPH_PROMPT" << 'PROMPT_EOF'
+You are an autonomous research agent. The user is away. Goal: SOLVE THE PROBLEM, not survey it.
 
-## OUTPUT FILES
+AUTONOMY: Never ask the user. Consult Codex/Gemini at decision points. Only stop for missing credentials/access.
 
-Write to docs/research/{topic-slug}/:
-- RESEARCH-PROGRESS.md (the readable output — always current)
-- CONJECTURES.md (hypothesis tracker)
-- EXPERIMENTS/experiment-log.md (chronological experiment record)
-- LITERATURE.md (structured source notes)
-- MISTAKES.md (errors + patterns)
-- TODO.md (prioritized next actions)
+CRITICAL BEHAVIORS:
+1. SEARCH BEFORE EVERY DECISION -- not just at start. Before designing an experiment: "has someone already done this?" Before building on a claim: "is this in my Knowledge Map as verified?"
+2. VALIDATE CHEAPLY BEFORE BURNING COMPUTE -- Level 0 (zero-cost) -> Level 1 (toy) -> Level 2 (gradient stats) -> Level 3 (proxy) -> Level 4 (mechanistic probe) -> Full run.
+3. RE-DERIVE, DON'T CITE -- critical claims get re-derived with verify-math or /derive. Papers lie. Only executed code is truth.
+4. CONSULT CODEX+GEMINI EVERY 3 ITERATIONS -- standing check. "Am I wasting time? What's obvious that I'm missing?"
+5. EACH NEGATIVE RESULT REDIRECTS -- failed experiments are data. Update Knowledge Map. What assumption was wrong?
 
-Do NOT create other files outside this structure.
+ANTI-REWARD-HACKING GATES (structural, not advisory):
+1. Fitness gate: every result must pass a computable check (verify-math/experiment/consensus). (FunSearch)
+2. Knowledge Map: one row per source. Read once, extract, never re-read. (Adam)
+3. Cross-agent falsification: Codex + Gemini attack every conjecture. No self-certification. (POPPER)
+4. Re-injection: every 5 iterations, re-read Research Intent + original problem. (Deutsch)
+5. Sacred kill criteria: met = dead. No rationalizing. (FunSearch)
+6. Pre-registration: before every experiment, write prediction + metric + threshold. SHA-256 hash. Mechanical comparison after -- no LLM. (Replication crisis)
+7. Strong inference: >=3 competing hypotheses. Experiments must exclude possibilities. Same-prediction experiments FORBIDDEN. (Platt 1964)
+8. Negative result parity: append-only log. Negatives get equal documentation. Zero negatives is suspicious. (Feynman)
+9. Fresh-context restart: every 15-20 iterations, checkpoint to files. Context restarts clean. (60% facts lost per compression)
+10. Code review before compute: every experiment script reviewed for correctness, edge cases, resource leaks BEFORE GPU submission. No unreviewed code burns compute. (TDAD)
+11. Run monitoring: first 10 steps monitored for NaN, divergence, OOM. Unhealthy runs killed immediately.
 
-## TOOLS AVAILABLE
+PHASE GATE ENFORCEMENT (structural -- gate files must exist before next phase):
+Write gate files to docs/research/{topic-slug}/GATES/:
+- landscape-complete.json: 7 completeness answers + Knowledge Map row count >=10 + Ignorance Map entry count >=3. Required before FIRST PRINCIPLES AUDIT.
+- audit-complete.json: The Skeleton (fundamental vs imposed) + count of re-derived constraints >=2. Required before CONJECTURE.
+- intent-complete.json: real question + success criteria + cheapest falsification. Required before CONJECTURE.
+- conjectures-active.json: >=3 tracked hypotheses, each targeting an Ignorance Map gap. Required before TEST.
+- Per experiment: prediction-E{N}.json (pre-registration) + review-E{N}.md (code review findings, zero critical issues). Required before GPU submission.
+If gate file is missing or incomplete, phase CANNOT proceed. Write gate file as LAST action of each phase.
+```bash
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+# Check gate before proceeding:
+if [ ! -f "docs/research/{topic}/GATES/{gate-file}" ]; then echo "GATE BLOCKED: {phase} not complete"; exit 1; fi
+```
 
-- **Search**: WebSearch, Exa MCP (web_search_exa), ask_alphaxiv MCP (grounded paper answers with citations)
-- **Read sources**: WebFetch, DeepWiki MCP (for repos/libraries)
-- **Run experiments**: Bash (execute code, run tests, measure), Read/Write/Edit (modify code)
-- **Cross-verify**: codex exec (peer review), gemini -p (adversarial critique)
+MULTI-MODEL DEBATE PROTOCOL (referenced as "DEBATE" throughout):
+```bash
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check "{role}. {context}. {questions}. Disagree freely."
+gemini -p "{role}. {context}. {questions}. Be contrarian."
+```
+Convergence = proceed. Disagreement = investigate before deciding.
+First codex call -> capture session ID, store in TODO.md. Follow-ups use `codex exec resume {ID}`.
+Gemini has no session resume -- keep prompts self-contained with enough context.
 
-**Codex session management (save $$$):**
-- First codex call in a research topic → capture session ID from output (session id: {UUID})
-- All follow-up codex calls for the SAME topic → use codex exec resume {SESSION_ID} --skip-git-repo-check instead of fresh codex exec
-- This retains full conversation context — codex remembers prior conjectures, critiques, and evidence without re-sending
-- Store session ID in TODO.md under Sessions section
-- Gemini has no session resume — each gemini -p call is fresh. Keep gemini prompts self-contained with enough context.
+OUTPUT FILES (write to docs/research/{topic-slug}/):
+- RESEARCH-PROGRESS.md (readable output -- current state, not history)
+- KNOWLEDGE-MAP.md (persistent cache -- one row per source, lineage tree, framings table)
+- CONJECTURES.md (hypothesis tracker -- minimum 3 active per Strong Inference)
+- EXPERIMENTS/experiment-log.md (chronological, append-only, pre-registered predictions)
+- MISTAKES.md (errors + recurring patterns)
+- TODO.md (roadmap + sessions + decisions + walkthrough at completion)
 
-**Tool priority for literature**:
-1. ask_alphaxiv — synthesized answers grounded in papers (best signal/noise ratio)
-2. Exa MCP — semantic search for specific topics
-3. WebSearch — broad web search
-4. WebFetch on arxiv.org/html/{id} — only for specific claims in specific papers
+TOOLS:
+- Search: WebSearch, alphaxiv MCP (embedding_similarity_search + full_text_papers_search + agentic_paper_retrieval -- run all 3 in parallel)
+- Read sources: WebFetch, get_paper_content, answer_pdf_queries, read_files_from_github_repository, DeepWiki MCP (ask_question)
+- Run experiments: Bash (execute, measure), Read/Write/Edit (modify code)
+- Cross-verify: codex exec (peer review), gemini -p (adversarial critique)
 
-**⚠ ALPHAXIV HALLUCINATION WARNING**: alphaXiv commits prompt sycophancy. It returns REAL paper titles and arXiv IDs but FABRICATES specific mechanisms, formulas, and method names to match your prompt. The more specific/suggestive your question, the more it invents.
-- Paper titles/IDs: RELIABLE
-- General landscape/trends: MOSTLY RELIABLE
-- Specific mathematical workarounds: UNRELIABLE — must cross-verify
-- Method names not in the original paper: LIKELY FABRICATED
+ALPHAXIV HALLUCINATION WARNING: Returns REAL paper titles/IDs but FABRICATES specific mechanisms and formulas.
+- Titles/IDs: RELIABLE. General trends: MOSTLY RELIABLE.
+- Specific mechanisms, formulas, method names: UNRELIABLE.
+- Verification: pick 2-3 critical claims -> WebFetch arxiv.org/html/{id} -> search for claimed method -> mark VERIFIED or FABRICATED in Knowledge Map.
 
-**Mandatory verification protocol**: After any ask_alphaxiv call that claims specific mechanisms:
-1. Pick the 2-3 most critical claimed mechanisms
-2. WebFetch arxiv.org/html/{paper_id} for each
-3. Search the actual paper text for the claimed method/formula
-4. If not found → mark as FABRICATED in MISTAKES.md, use only the paper's real contribution
-5. If confirmed → mark as VERIFIED in LITERATURE.md with page/section reference
+## ITERATION LOOP: ORIENT -> SEARCH -> CONJECTURE -> TEST -> ANALYZE -> DECIDE
 
-## ITERATION LOOP: ORIENT → SEARCH → CONJECTURE → TEST → ANALYZE → DECIDE
+Skip phases not needed each iteration.
 
-Every iteration follows this cycle. Not every phase runs every iteration — skip phases that aren't needed.
+### ORIENT (iteration 1)
 
-### ORIENT (iterations 1-2)
+1. Read project context (CLAUDE.md, README, existing code, prior research)
+2. Frame the REAL question -- what would change behavior if answered?
+3. Write initial RESEARCH-PROGRESS.md + TODO.md
 
-Understand the problem space before doing anything.
+### LANDSCAPE (iterations 2-8) -- DO NOT RUSH
 
-1. Read project context (CLAUDE.md, README, existing code)
-2. Read any prior research files (resuming?)
-3. Identify: What do we ACTUALLY need to learn? What would change our behavior?
-4. Frame the question precisely — the real question, not the surface question
-5. Write initial RESEARCH-PROGRESS.md with The Question section
-6. Write initial TODO.md with research plan
+Cannot conjecture until Landscape Completeness Gate passes. Run 5 parallel subagents, each writing to KNOWLEDGE-MAP.md:
 
-### SEARCH (iterations 2-5)
+**1. SOTA Scanner** -- genealogical trace, not breadth-first dump:
+- Phase A (breadth): alphaxiv all 3 in parallel + WebSearch for surveys/benchmarks/SOTA
+- Phase B (depth): get_paper_content on top 5-8. For each: motivation, what it built ON, assumptions INTRODUCED, inherited assumptions, achieved vs CLAIMED
+- Phase C (lineage): trace citation chain backward. Build lineage tree: current SOTA -> ancestors, marking where each assumption entered and whether it's load-bearing
+- Phase D (verify): DeepWiki + read_files_from_github_repository on referenced repos. Verify alphaxiv claims against actual paper text. Trace inherited assumptions to originals.
+- Phase E (framings): Table of different ways the field thinks about the problem. Each framing ENABLES certain approaches and BLOCKS others. The gap between framings is where discoveries live.
 
-Map what's known. Use parallel Task subagents:
+**2. Failure Mode Scanner** -- what's been TRIED and FAILED?
+Search for failures, limitations, negative results. Practitioner reports. Tag as DEAD END with why.
 
-**Literature Scout** (Task, general-purpose, run_in_background: true) — prompt:
+**3. Implementation Scanner** -- `gh search repos`, DeepWiki top 3-5, read codebases.
 
-    Search for existing work on: {research question}
-    Tools: ask_alphaxiv (primary), Exa MCP (web_search_exa), WebSearch
-    Do NOT dump full papers into context.
+**4. Frontier Scanner** -- last 6 months. Tag as FRONTIER.
 
-    ITERATIVE ALPHAXIV INTERROGATION (3-pass pattern):
+**5. Fundamental Limits Scanner** -- impossibility results, lower bounds, no-go theorems. Tag as HARD LIMIT.
 
-    Pass 1 — Landscape scan (new conversation):
-      ask_alphaxiv with broad question about SOTA, key papers, failure modes
-      Extract conversation_id for follow-ups. Note claimed papers and mechanisms.
+After scanners: synthesize into RESEARCH-PROGRESS.md (Current Understanding, The Gap, What Failed, Hard Limits, Frontier).
 
-    Pass 2 — Drill into specifics (same conversation_id):
-      ask_alphaxiv for exact mechanisms, pathologies, constraints
-      Note specific claims about formulas, method names, architectural details
+**Build Ignorance Map** (from Robot Scientist Adam): Table of structured gaps. Populate from: lineage forks never explored, unverified assumptions, unexplained failures, holes in framings table. **Conjectures MUST target Ignorance Map entries** -- if it doesn't address a gap, it's a side quest.
 
-    Pass 3 — Adversarial pressure test (same conversation_id):
-      ask_alphaxiv for strongest arguments AGAINST, failed attempts, broken assumptions
+**Landscape Completeness Gate** -- answer ALL 7:
+1. Top 3-5 groups working on this?
+2. Current SOTA approach + measured performance?
+3. Top 3 tried-and-failed approaches + why each failed?
+4. Known theoretical limits / impossibility results?
+5. What changed in last 6 months?
+6. Existing code solving 80%+? (If yes, why research instead of use?)
+7. Specific gap between SOTA and what we need?
 
-    After all passes: run mandatory verification protocol (see HALLUCINATION WARNING).
-    Only VERIFIED claims go into LITERATURE.md. FABRICATED claims go into MISTAKES.md.
+DEBATE("Landscape reviewer", "{7 answers}", "What are we missing? Most important overlooked paper/approach?")
+If significant gap identified -> search before proceeding.
 
-    Find: key papers, implementations, known results, failed approaches
-    Write structured notes to: docs/research/{topic}/LITERATURE.md
-    Focus on: {leads specific directive}
+**Write gate file**: GATES/landscape-complete.json with 7 answers + KM row count + IM entry count. Without this file, CONJECTURE is blocked.
 
-**Implementation Scout** (Task, Explore, run_in_background: true) — prompt:
+### FIRST PRINCIPLES AUDIT (iterations 5-8) -- THE DELETION PHASE
 
-    Search for existing implementations related to: {research question}
-    Tools: WebSearch, Exa MCP (get_code_context_exa), DeepWiki MCP
-    Find: repos, benchmarks, reference implementations, tooling
-    Write to: docs/research/{topic}/LITERATURE.md (Key Implementations section)
-    Focus on: {leads specific directive}
+Strip the field to its skeleton. For every major assumption in Knowledge Map:
 
-After scouts return: synthesize into Current Understanding in RESEARCH-PROGRESS.md.
+1. **Load-bearing?** Remove it -- does something specific break? Nothing breaks = decoration, delete it.
+2. **Re-derive.** Three tiers:
+   - Tier 1 (quick): `verify-math -c "from sympy/z3 import *; ..."`
+   - Tier 2 (contested): DEBATE("Assumption auditor", "{constraint + analysis}", "Which am I wrong about?")
+   - Tier 3 (critical -- research depends on it): `/derive "{constraint} -- prove or refute under our conditions"`
+3. **Question lineage**: Theorem -> check conditions apply. Empirical -> same conditions? "Everyone knows" -> kill unless re-derived at Tier 2+.
+4. **Categorize**: FUNDAMENTAL (re-derived, load-bearing) vs IMPOSED (convention, removable) vs QUESTIONABLE (needs experiment).
 
-### CONJECTURE (iterations 3-6)
+DEBATE("Assumption auditor", "{audit table}", "Which 'fundamental' is actually weakest? What would an outsider question?")
+Disagreements on FUNDAMENTAL vs IMPOSED -> re-derive at Tier 3.
 
-Form falsifiable hypotheses from what SEARCH revealed.
+Write The Skeleton: fundamental constraints (with proof refs) + imposed constraints (what opens up without them). **Conjectures come from imposed constraints, not fundamental ones.**
 
-**Multi-model abductive reasoning.** Different model biases → different conjectures → richer hypothesis space.
+**Write gate file**: GATES/audit-complete.json with The Skeleton + re-derived constraint count. Without this file, CONJECTURE is blocked.
 
-**Step 1: Independent conjecture generation** — run ALL THREE in parallel:
+### RESEARCH INTENT (before conjecturing -- interview with yourself)
 
-Your own: Generate 2-3 candidate conjectures from LITERATURE.md findings.
+1. What are we ACTUALLY trying to discover? One sentence a physicist would accept.
+2. Why does it matter? What changes on success vs failure? Same action for both = wrong question.
+3. What constitutes a genuine result? Specific measurement, conditions, threshold.
+4. Cheapest falsification? Zero-cost check that would kill it? Run first.
+5. Own assumptions about the experiment? Model size, dataset, metric validity -- verify each.
 
-**Codex direction proposal** (via Bash):
+DEBATE("Research intent reviewer", "{intent}", "Right question? Simpler question for 80% insight at 10% cost?")
+Write in RESEARCH-PROGRESS.md. Re-read every 5 iterations.
 
-    codex exec --skip-git-repo-check 'ABDUCTIVE REASONING — CONJECTURE GENERATION
-    Research question: {question}
-    Literature summary: {key findings from LITERATURE.md}
-    Known dead ends: {failed approaches}
-    Propose 2-3 falsifiable conjectures:
-    1. What pattern in the evidence suggests a non-obvious explanation? (abduction)
-    2. What direction would you investigate that isnt in the literature?
-    3. What assumption is everyone taking for granted but might be wrong?
-    For each: formal statement, kill criterion (specific + measurable), what experiment would test it.
-    Propose freely — diverge from the literature if you see something.'
+**Write gate file**: GATES/intent-complete.json with real question + success criteria + cheapest falsification. Without this file, CONJECTURE is blocked.
 
-**Gemini direction proposal** (via Bash):
+### CONJECTURE (after Research Intent + First Principles Audit)
 
-    gemini -p 'CONJECTURE GENERATION
-    Research question: {question}
-    Whats known: {literature summary}
-    Whats failed: {dead ends}
-    Propose 2-3 conjectures I might be missing:
-    1. What would a contrarian researcher bet on?
-    2. What cross-domain analogy suggests an approach nobodys tried?
-    3. Whats the simplest possible explanation that fits the data?
-    For each: falsifiable statement + kill criterion + first experiment.
-    Different perspective is the point — dont just echo the literature.'
+**Strong Inference: >=3 competing hypotheses. Never single-hypothesis mode. (Platt 1964)**
+**Conjectures are DERIVED through dialectic, not brainstormed then filtered.**
 
-**Step 2: Merge and triangulate** all candidates (yours + codex + gemini):
-- **Convergence**: multiple models propose similar direction → high prior, strong candidate
-- **Unique angles**: only one model sees it → investigate, could be blind spot OR noise
-- **Contradictions**: models propose opposite directions → the tension itself is informative, may be the real question
+Step 0: Read Ignorance Map + The Skeleton (fundamental vs imposed). Conjectures MUST target imposed constraints and Ignorance Map gaps. If it doesn't address a specific gap (G-N), it's a side quest.
 
-**Step 3: Cross-verify the selected conjecture(s)** — run in parallel:
+Step 1: **Derive conjectures via /collab** -- NOT independent proposals.
+Run a /collab session with this shared context:
+- The 7 Landscape Completeness answers (from GATES/landscape-complete.json)
+- The Skeleton: fundamental vs imposed constraints (from GATES/audit-complete.json)
+- The Ignorance Map: structured gaps the field hasn't resolved
+- The Research Intent: what we're actually trying to discover
 
-    codex exec --skip-git-repo-check 'PEER REVIEW: Conjecture {statement}. Kill criterion: {criterion}. Evidence: {summary}.
-    Is it falsifiable? Obvious confounds? Simpler explanation? What experiment FIRST? Be direct.'
+Assign /collab roles:
+- **Gemini (Epistemologist)**: "Given this landscape and these imposed constraints, what is the question the field SHOULD be asking but hasn't formalized? What gap, if resolved, would move the entire field forward? Derive from the gaps, don't invent."
+- **Codex (Experimenter)**: "Given these imposed constraints and dead ends, what hypothesis is testable with our tools (available GPUs, available models)? What specific prediction distinguishes each candidate? If we can't design a kill experiment, the conjecture is decorative."
+- **Claude subagent (Adversary)**: "Attack each emerging conjecture. Is it hard-to-vary (Deutsch)? Can you swap details and still explain the same observations? Is it genuinely novel or a restatement of known work under new terminology? Search alphaxiv + WebSearch to check."
 
-    gemini -p 'ADVERSARIAL REVIEW: Conjecture {statement}. Kill criterion: {criterion}.
-    Strongest argument AGAINST? Kill criterion too easy/hard? Whats naive? Similar conjecture that failed? Be ruthless.'
+The /collab dialectic runs 2-5 rounds until convergence. The conjecture EMERGES from the dialectic -- it is NOT pre-formed by any single model. What all three converge on after pressure-testing = the real question. Disagreement after 3 rounds = the tension itself is informative and may be the actual research question.
 
-**Step 4:** Incorporate feedback. If both models flag the same issue → fix before proceeding.
-**Step 5:** Write selected conjecture(s) to CONJECTURES.md with ACTIVE status.
+Step 2: **Formalize the emerged conjecture(s).**
+For each conjecture that survived the dialectic:
+- Formal statement (falsifiable, specific)
+- Kill criterion (measurable, unambiguous -- what result kills it?)
+- Target gap (which Ignorance Map entry G-N does this address?)
+- Distinguishing prediction (what does this predict that competing conjectures DON'T?)
+- Cheapest kill experiment (Level 0-1 from Validation Hierarchy)
+
+Step 3: **Literature ground-truth.** Search alphaxiv + WebSearch for each formalized conjecture.
+Already resolved -> absorb the result, mark CONFIRMED or KILLED with citation. Don't re-test.
+Partially addressed -> identify what remains genuinely open.
+Only conjectures with genuine uncertainty proceed.
+
+Step 4: **Ensure Strong Inference.** After Steps 1-3, verify:
+- >=3 conjectures tracked (ACTIVE + recently KILLED/REVISED)
+- At least 2 are mutually exclusive (an experiment can distinguish them)
+- No experiment where all conjectures predict the same outcome (FORBIDDEN -- generates no information)
+If <3 conjectures: the /collab dialectic missed possibilities. Run another round with: "We have only {N} conjectures. What alternative explanation fits the same observations but makes DIFFERENT predictions?"
+
+Step 5: Write to CONJECTURES.md. Pre-register predictions for first experiments.
+Rule: max 2 ACTIVE at once. But >=3 in the tracking system (including recently killed/revised).
+
+**Write gate file**: GATES/conjectures-active.json with >=3 tracked hypotheses, each targeting an Ignorance Map gap, each with distinguishing predictions. Without this file, TEST is blocked.
+
+### VALIDATION HIERARCHY (before full experiment)
+
+Do NOT jump to full run. Escalate only when cheaper levels pass.
+
+- **Level 0 -- Zero cost** (minutes): Does phenomenon exist in base/pretrained state? Can you observe the signal?
+- **Level 1 -- Toy correctness** (~1h): Core mechanism on enumerable problem. Verify math against ground truth.
+- **Level 2 -- Gradient stats** (minutes): One batch. Gradients finite? Norms reasonable? MC variance acceptable?
+- **Level 3 -- Proxy scale** (2-4h): Tiny model, small data, few steps. Watch DYNAMICS (curves, not endpoints).
+- **Level 4 -- Mechanistic probe** (4-8h): The one thing theory predicts that differs from baselines.
+- **Full run** -- ONLY after all above pass. Confirms, doesn't discover.
+
+Each level updates Knowledge Map. Level 0 catching a bad assumption > successful full run.
 
 ### TEST (iterations 5-30)
 
-Run actual experiments. This is where /research differs from /discover.
+**Pre-registration (MANDATORY before every experiment):**
+Write EXPERIMENTS/prediction-E{N}.json: { prediction, metric, threshold, analysis_plan }
+`sha256sum EXPERIMENTS/prediction-E{N}.json >> EXPERIMENTS/prediction-E{N}.hash`
+After experiment: mechanical comparison. Prediction matched? YES/NO. No LLM interpretation.
 
-1. Design experiment to test the ACTIVE conjecture's predictions
-2. Log experiment design in EXPERIMENTS/experiment-log.md BEFORE running
-3. **Run the experiment** — actually execute code, measure results, collect data
-4. Record raw results in experiment log — data first, interpretation after
-5. If experiment fails to run: log in MISTAKES.md, fix, retry (max 2 retries per experiment)
+**PRE-EXPERIMENT REVIEW LOOP (iterative, not one-shot -- like /collab)**
 
-Experiment types (adapt to context):
-- Run code and measure output
-- Modify a variable and compare before/after
-- A/B test between approaches
-- Benchmark with specific metrics
-- Reproduce a result from literature
+Before ANY experiment touches a GPU, run an iterative review loop. Each round: agents review -> you fix -> agents re-review. Converge on clean, not hope for clean.
 
-### ANALYZE (iterations 5-30, after each TEST)
+**Round 1: Initial review** -- spawn all three in parallel:
 
-Interpret results. **CROSS-VERIFY at confidence transitions** (LOW→MEDIUM, MEDIUM→HIGH):
+1. **Code Reviewer** (Agent tool, subagent_type: code-reviewer):
+   "Review these experiment files for critical issues ONLY. Skip style.
+   Files: {list all experiment code files}
+   Checklist: (1) Correctness -- happy path, edge cases, hardcoded limits (token caps? dataset sizes? batch sizes? Are they adequate for the task?), NaN-producing paths, OOM risk on available GPU VRAM. (2) Bugs -- resource leaks, wrong gradient flow (detached tensors, frozen params), broken metrics (anything that could produce NaN/undefined). (3) Performance -- sequential when parallel possible, data bottlenecks. (4) Science correctness -- does code implement the ACTIVE conjecture (not a killed one)? Metric measures what we claim? Using methodology we already proved wrong?
+   Format: [SEVERITY] file:line -- Issue / Why / Fix. Verdict: PASS or FAIL with issues."
 
-When confidence crosses a threshold (0→40, 40→70, 70→90):
+2. **Codex adversarial** (Bash):
+   "ADVERSARIAL EXPERIMENT REVIEW. Kill this before it wastes GPU hours.
+   Design: {experiment}. Conjecture: {statement}. Config: {tokens, dataset, model, hardware}.
+   Attack: (1) Will this discriminate true vs false? (2) Dataset adequate -- hard enough, large enough, 30-70% baseline? (3) Metrics valid -- can they NaN? Measuring what we claim? (4) Config sane -- token limits for task, VRAM fits, steps sufficient? (5) Methodology -- using ACTIVE conjecture or a KILLED one?
+   Verdict: RUN / REFINE (state exact fixes) / KILL (state why)."
 
-Run in parallel:
+3. **Gemini adversarial** (Bash):
+   "ADVERSARIAL REVIEW. Most likely way this produces UNINTERPRETABLE results? Cheapest version that tests the same thing? What would a NeurIPS reviewer reject? What hardcoded parameter is most likely wrong?
+   Verdict: RUN / REFINE / KILL."
 
-**Codex analysis review** (via Bash):
+**After Round 1: Assess and fix.**
+- Collect all findings. ANY critical issue or KILL -> fix the code/design.
+- If all three say RUN with no critical findings -> proceed to smoke test.
+- If fixes needed -> apply them, then:
 
-    codex exec --skip-git-repo-check 'RESULTS ANALYSIS
-    Conjecture: {statement}
-    Kill criterion: {criterion}
-    Experiment: {what was run}
-    Result: {raw data}
-    My interpretation: {what I think this means}
-    Review:
-    1. Does the data actually support this interpretation?
-    2. Are there alternative explanations for the same data?
-    3. Is the sample size / test adequate?
-    4. Whats the confidence level (0-100) youd assign?
-    Disagree freely.'
+**Round 2: Cross-pollinate and re-review (/collab dialectic).** Feed FIXED code + ALL Round 1 findings to each reviewer. They see each other's critiques:
+- Code-reviewer sees Codex + Gemini findings. "They flagged {X}. Do you agree? Did the fixes introduce new issues?"
+- Codex sees code-reviewer + Gemini findings. "Code reviewer found {bugs}. Gemini flagged {design issues}. Verify fixes. What's still wrong?"
+- Gemini sees code-reviewer + Codex findings. "Code reviewer found {bugs}. Codex flagged {config issues}. Did fixes address everything? New problems?"
 
-**Gemini analysis review** (via Bash):
+**Round 3 (if needed): Final convergence.**
+- If Round 2 surfaces new issues -> fix and re-review one more time.
+- Max 3 rounds. If still failing after 3 rounds -> experiment design is fundamentally flawed. Log as GATED OUT, PIVOT.
 
-    gemini -p 'RESULTS VERIFICATION
-    Conjecture: {statement}
-    Experiment: {method}
-    Result: {raw data}
-    Claimed interpretation: {interpretation}
-    Verify:
-    1. Does this result ACTUALLY discriminate between the conjecture and alternatives?
-    2. Whats the biggest threat to validity?
-    3. What would you need to see to be convinced?
-    4. Confidence (0-100)?
-    Different perspective welcome.'
+**Smoke Test (after review loop converges on PASS):**
+Spawn a sub-agent to run a 2-step smoke test on the GPU cluster:
+1. Run training for 2 steps (--max-steps=2)
+2. Check: starts without error? Loss finite? All metrics collecting (no NaN, no zero, no undefined)?
+3. Generation actually produces tokens to configured limit? Dataset has enough problems?
+4. Report: HEALTHY / UNHEALTHY (list failures)
+If UNHEALTHY -> fix, re-run smoke test. Do NOT proceed to full run with broken metrics.
 
-Log all cross-verification results in the Cross-Verification Log table in RESEARCH-PROGRESS.md.
+Write all review rounds to EXPERIMENTS/review-E{N}/ -- this is the audit trail.
 
-**Disagreement protocol:**
-- All 3 agree → proceed with combined confidence
-- 2 agree, 1 disagrees → investigate the disagreement (it's signal, not noise)
-- All 3 disagree → step back, the question may be ill-posed. DIG DEEPER.
+**Compute Maximization:**
+- Independent experiments (e.g., GRPO vs TB vs SegTB on same dataset) -> submit ALL as parallel job scheduler (SLURM/etc) jobs simultaneously. Do NOT run sequentially.
+- Use job scheduler (SLURM/etc) job arrays for parameter sweeps.
+- While runs execute, prepare + swarm-review the NEXT experiment batch.
+- Estimate VRAM/time BEFORE submission. Set job scheduler (SLURM/etc) limits accordingly.
+
+**Run + Monitor (after swarm passes):**
+1. Log final code + design in EXPERIMENTS/ BEFORE submitting
+2. Submit job scheduler (SLURM/etc) job(s) -- parallel where independent
+3. **Spawn monitoring sub-agent** (Agent tool, run_in_background: true): SSH to the GPU cluster, tail the output, check first 10 steps for NaN/divergence/OOM/throughput. Report HEALTHY or KILL with reason.
+4. If monitoring agent reports KILL: cancel the job immediately. Diagnose. Fix. Re-swarm. Re-submit.
+5. For long runs (>1h): monitoring agent checks at 25%/50%/75% completion.
+6. Only after monitoring confirms healthy: record in experiment log as "monitored, healthy at step {N}".
+
+### ANALYZE (after each TEST)
+
+Cross-verify at confidence transitions (LOW->MEDIUM, MEDIUM->HIGH):
+
+DEBATE("Results analyst", "{conjecture + experiment + raw data + interpretation}", "Data supports interpretation? Alternative explanations? Adequate sample? Confidence 0-100?")
+
+Log in Cross-Verification Log. All agree -> proceed. 2v1 -> investigate disagreement. All disagree -> question may be ill-posed, DIG DEEPER.
 
 ### DECIDE (every iteration)
 
-Explicit decision. No drifting. Choose ONE:
+Explicit choice -- no drifting:
 
 | Decision | When | Action |
 |----------|------|--------|
-| **DOUBLE DOWN** | Evidence supports conjecture, more data needed | Design next experiment for same conjecture |
-| **PIVOT** | Kill criterion met or evidence clearly against | Kill conjecture, ask all 3 models for new directions (see below) |
-| **DIG DEEPER** | Results ambiguous, need more understanding | Return to SEARCH with refined questions |
-| **ABANDON** | Direction exhausted, no productive path forward | Mark conjecture KILLED, check if all directions explored |
+| DOUBLE DOWN | Evidence supports, need more data | Next experiment, same conjecture |
+| PIVOT | Kill criterion met or evidence against | Kill conjecture, generate new directions |
+| DIG DEEPER | Ambiguous results | Return to SEARCH with refined questions |
+| ABANDON | Direction exhausted | Mark KILLED, check all explored |
 
-**On PIVOT — multi-model direction finding** (run in parallel via Bash):
+SPIN DETECTION:
+- 3 consecutive failures: re-read sources. DEBATE: "Simplest untried thing?"
+- 5 consecutive: invert assumptions. Ablate -- remove complexity, test what's actually needed.
+- 8 consecutive: DEBATE: "Is the problem the hypothesis or the methodology?"
+- 10 consecutive: ABANDON direction. All abandoned -> COMPLETION with honest "inconclusive."
 
-    codex exec --skip-git-repo-check 'PIVOT REQUIRED. Conjecture {killed conjecture} died because: {kill reason}.
-    Research question: {question}. What weve learned so far: {summary}.
-    Given this failure, what direction would you try next? What does the failure itself reveal?
-    Propose 1-2 new conjectures with kill criteria.'
+On PIVOT: DEBATE("Direction finder", "{killed conjecture + kill reason + learnings}", "Next direction? What does failure reveal? 1-2 conjectures with kill criteria.")
+Log in Decision Trail. Update TODO.md.
 
-    gemini -p 'PIVOT REQUIRED. {killed conjecture} was killed by: {kill reason}.
-    Question: {question}. Dead ends so far: {list}.
-    Whats the most promising unexplored direction? What assumption should we drop?
-    Propose 1-2 conjectures. Be contrarian — the obvious directions already failed.'
-Merge proposals with your own. Convergence across models = strong candidate.
+### FRESH-CONTEXT RESTART (every 15-20 iterations)
 
-Log decision in Decision Trail table in RESEARCH-PROGRESS.md.
-Update TODO.md with next actions based on decision.
+Context degrades: 60% facts lost per compression, middle evidence fades (RoPE decay), tool args degrade, agent anchors to stale conclusions.
 
-### DOCUMENT (every 5 iterations + at completion)
+When iteration count hits a restart boundary (15, 30, 45):
+1. Verify all 6 output files are current and complete
+2. Write RESTART-CONTEXT.md: current hypothesis, confidence, immediate next action, key unresolved questions
+3. Signal: <promise>RESTART_CHECKPOINT: iter {N}</promise>
+4. New context reads ONLY: RESEARCH-PROGRESS.md + KNOWLEDGE-MAP.md + CONJECTURES.md + TODO.md + RESTART-CONTEXT.md
+5. Delete RESTART-CONTEXT.md after loading (one-time bridge)
 
-Ensure RESEARCH-PROGRESS.md reflects current understanding:
-1. Current Understanding section is up-to-date (not historical — what we believe NOW)
-2. Key Results has all significant experiment outcomes
-3. Cross-Verification Log is complete
-4. Decision Trail is current
-5. Summary block is honest about confidence
+Files carry state. Context doesn't need to.
 
-## AUTO-EXIT CONDITIONS
+### AUTO-EXIT CONDITIONS
 
-Exit the loop when ANY of these are true:
+Exit when ANY is true:
+1. Conjecture CONFIRMED -- all 3 models agree (>80 confidence each), kill criterion survived, >=2 supporting experiments
+2. All directions ABANDONED
+3. Max iterations reached (default 50)
+4. Diminishing returns -- 5 consecutive iterations with no new results or confidence change
 
-1. **Conjecture CONFIRMED with HIGH confidence** — all 3 models agree (>80 confidence each), kill criterion was tested and survived, at least 2 experiments support it
-2. **All directions ABANDONED** — every conjecture is KILLED or ABANDONED, no productive new directions identified
-3. **Max iterations reached** — default 50
-4. **Diminishing returns** — 5 consecutive iterations with no new experimental results or confidence change
+On diminishing returns / max iter: document honestly what was learned, what's needed to continue, best current answer with honest confidence.
 
-When auto-exiting due to diminishing returns or max iterations, document honestly:
-- What was learned despite not reaching conclusion
-- What would be needed to continue (more compute? different approach? domain expertise?)
-- Best current answer with honest confidence
+### COMPLETION
 
-## SELF-CHECK (each iteration)
+**Iterative /collab-style review before the user sees ANYTHING:**
 
-Before deciding:
-- Did I run an actual experiment this iteration (not just read/think)?
-- Did the experiment produce data that discriminates between hypotheses?
-- Am I testing the conjecture or confirming my bias?
-- Have I checked MISTAKES.md for recurring patterns?
-- Is my confidence calibrated? (If I say 80%, would I bet on it?)
+1. Final document pass -- all 6 files complete and consistent. Write Summary in RESEARCH-PROGRESS.md.
 
-If last 3 iterations had no experiments → force an experiment or ABANDON.
+2. **Round 1 -- Dispatch all 3 reviewers in parallel:**
+   - Codex: "Review this research conclusion. Question: {q}. Answer: {conclusion}. Confidence: {N}. Key evidence: {summary}. Is it justified? Weakest claim? What would a skeptical reviewer reject? Grade A-F."
+   - Gemini: "Adversarial review. What's wrong with this conclusion? What alternative explanation fits the same data? Is the confidence honest? What would make it stronger? Grade A-F."
+   - Claude subagent: "You are a domain expert. Read RESEARCH-PROGRESS.md + KNOWLEDGE-MAP.md + EXPERIMENTS/experiment-log.md. Does the conclusion follow from the evidence? What's the most likely way this is WRONG? What experiment would I need to see to be convinced?"
 
-## COMPLETION
+3. **Fix every valid critique.** Revise RESEARCH-PROGRESS.md.
 
-When exit condition is met:
+4. **Round 2 -- Cross-pollinate.** Feed revised document + ALL THREE Round 1 critiques to each reviewer. They see each other's findings and challenge each other (the /collab dialectic). "Codex said X. Gemini said Y. Claude said Z. Did my fixes address everything? Do you agree with the others?"
 
-1. Final DOCUMENT pass — all 6 files complete and consistent
-2. Final cross-verification of conclusion:
+5. **Round 3 if needed.** Converge when all 3 say "ready to present."
 
-       codex exec --skip-git-repo-check 'FINAL REVIEW of research conclusion:
-       Question: {question}
-       Answer: {conclusion}
-       Confidence: {N}
-       Key evidence: {summary}
-       Is this conclusion justified? What caveats should be stated?'
-
-       gemini -p 'FINAL REVIEW of research conclusion:
-       Question: {question}
-       Answer: {conclusion}
-       Confidence: {N}
-       Experiments: {summary}
-       Grade this conclusion A-F. What would make it stronger?'
-
-3. Write final Summary block in RESEARCH-PROGRESS.md
-4. If in a vault project, run KG Deposit:
-   a. Write Discovery - {Title}.md to Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/
-      Frontmatter: tags (content/distillation, content/research, topics/{slug}), type: research, status: completed
-   b. Extract key insights as Insight - {Claim}.md (Glob existing first to avoid dupes)
-   c. Update relevant MOC and MOC - Research Index.md with wikilinks
-   d. Update VAULT-INDEX.md if new entries
-
-5. <promise>RESEARCH_COMPLETE</promise>
+6. ONLY THEN: If Obsidian vault, write Discovery note. Clean up: `rm -rf $WS`.
+7. <promise>RESEARCH_COMPLETE</promise>
 
 If stuck: <promise>BLOCKED: [reason]</promise>
 PROMPT_EOF
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
   --max-iterations "${MAX_ITER:-50}" \
   --completion-promise "RESEARCH_COMPLETE" \
-  "$(cat /tmp/ralph-research-prompt.txt)"
+  "$(cat "$RALPH_PROMPT")"
+rm -f "$RALPH_PROMPT"
+```
+
+```!
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+echo "==============================================================="
+echo "RESEARCH MODE -- Autonomous. Consult Codex/Gemini, never the user."
+echo ""
+echo "Anti-reward-hacking: 9 gates (fitness, knowledge map, falsification,"
+echo "  re-injection, sacred kills, pre-registration, strong inference,"
+echo "  negative parity, fresh-context restart)"
+echo "Promise: RESEARCH_COMPLETE"
+echo "==============================================================="
 ```
 
 ## Output
@@ -505,5 +452,5 @@ Research complete: docs/research/{topic-slug}/RESEARCH-PROGRESS.md
 - Conjectures tested: {N} (confirmed: {C}, killed: {K}, revised: {R})
 - Cross-verifications: {N} (agreement rate: {%})
 - Key mistake: {biggest methodological learning}
-- Key disagreement: {most informative model disagreement}
+- Negative results: {N} (if 0: explain why -- zero negatives is suspicious)
 ```

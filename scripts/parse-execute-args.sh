@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 # Parse /execute command arguments
 # Outputs environment variable assignments that can be eval'd
 # Usage: eval "$(./parse-execute-args.sh $ARGUMENTS)"

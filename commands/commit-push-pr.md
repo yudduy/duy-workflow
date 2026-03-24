@@ -11,18 +11,22 @@ Quick inner-loop command for committing, pushing, and creating a PR.
 ## Context
 
 ```!
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 git status
 ```
 
 ```!
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 git diff HEAD
 ```
 
 ```!
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 git branch --show-current
 ```
 
 ```!
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 git log --oneline -5
 ```
 

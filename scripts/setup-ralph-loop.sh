@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 
 # Ralph Loop Setup Script
 # Creates state file for in-session Ralph loop

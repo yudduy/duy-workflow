@@ -1,22 +1,28 @@
 #!/bin/bash
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 
 # Ralph Wiggum Stop Hook
 # Prevents session exit when a ralph-loop is active
+# Uses Haiku judge to verify completion instead of brittle string matching
 # Feeds Claude's output back as input to continue the loop
 
 set -euo pipefail
 
-# Read hook input from stdin (advanced stop hook API)
-HOOK_INPUT=$(cat)
+# --- Recursion guard ---
+# If we ARE the Haiku judge, allow stop immediately
+if [[ "${CLAUDE_HOOK_JUDGE_MODE:-}" = "true" ]]; then
+  exit 0
+fi
 
-# Use PPID for session isolation - each Claude Code process has unique PID
-# The stop hook is a child of Claude Code, so PPID gives us the session PID
+# Read hook input from stdin (advanced stop hook API)
+HOOK_INPUT=$(/bin/cat)
+
+# Use PPID for session isolation
 CLAUDE_SESSION_PID=$PPID
 RALPH_STATE_FILE=".claude/ralph-loop.${CLAUDE_SESSION_PID}.local.md"
 
 if [[ ! -f "$RALPH_STATE_FILE" ]]; then
   # No active loop for THIS session - allow exit
-  # (other sessions may have their own loops, but we don't interfere)
   exit 0
 fi
 
@@ -24,28 +30,23 @@ fi
 FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$RALPH_STATE_FILE")
 ITERATION=$(echo "$FRONTMATTER" | grep '^iteration:' | sed 's/iteration: *//')
 MAX_ITERATIONS=$(echo "$FRONTMATTER" | grep '^max_iterations:' | sed 's/max_iterations: *//')
-# Extract completion_promise and strip surrounding quotes if present
 COMPLETION_PROMISE=$(echo "$FRONTMATTER" | grep '^completion_promise:' | sed 's/completion_promise: *//' | sed 's/^"\(.*\)"$/\1/')
 
-# Validate numeric fields before arithmetic operations
+# --- Haiku judge configuration ---
+JUDGE_MODEL="${RALPH_JUDGE_MODEL:-haiku}"
+JUDGE_TIMEOUT="${RALPH_JUDGE_TIMEOUT:-30}"
+THROTTLE_MAX="${RALPH_THROTTLE_MAX:-5}"
+THROTTLE_WINDOW="${RALPH_THROTTLE_WINDOW:-300}"  # 5 minutes
+
+# Validate numeric fields
 if [[ ! "$ITERATION" =~ ^[0-9]+$ ]]; then
-  echo "⚠️  Ralph loop: State file corrupted" >&2
-  echo "   File: $RALPH_STATE_FILE" >&2
-  echo "   Problem: 'iteration' field is not a valid number (got: '$ITERATION')" >&2
-  echo "" >&2
-  echo "   This usually means the state file was manually edited or corrupted." >&2
-  echo "   Ralph loop is stopping. Run /ralph-loop again to start fresh." >&2
+  echo "⚠️  Ralph loop: State file corrupted (iteration='$ITERATION')" >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
 
 if [[ ! "$MAX_ITERATIONS" =~ ^[0-9]+$ ]]; then
-  echo "⚠️  Ralph loop: State file corrupted" >&2
-  echo "   File: $RALPH_STATE_FILE" >&2
-  echo "   Problem: 'max_iterations' field is not a valid number (got: '$MAX_ITERATIONS')" >&2
-  echo "" >&2
-  echo "   This usually means the state file was manually edited or corrupted." >&2
-  echo "   Ralph loop is stopping. Run /ralph-loop again to start fresh." >&2
+  echo "⚠️  Ralph loop: State file corrupted (max_iterations='$MAX_ITERATIONS')" >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
@@ -61,124 +62,214 @@ fi
 TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path')
 
 if [[ ! -f "$TRANSCRIPT_PATH" ]]; then
-  echo "⚠️  Ralph loop: Transcript file not found" >&2
-  echo "   Expected: $TRANSCRIPT_PATH" >&2
-  echo "   This is unusual and may indicate a Claude Code internal issue." >&2
-  echo "   Ralph loop is stopping." >&2
+  echo "⚠️  Ralph loop: Transcript not found ($TRANSCRIPT_PATH)" >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
 
-# Read last assistant message from transcript (JSONL format - one JSON per line)
-# First check if there are any assistant messages
+# --- Throttle check ---
+# Prevent runaway loops: max N continuations per time window
+SESSION_ID=$(echo "$HOOK_INPUT" | jq -r '.session_id // empty')
+THROTTLE_FILE="/tmp/.ralph-throttle-${SESSION_ID:-$CLAUDE_SESSION_PID}"
+
+if [[ -f "$THROTTLE_FILE" ]]; then
+  THROTTLE_DATA=$(cat "$THROTTLE_FILE")
+  THROTTLE_COUNT=$(echo "$THROTTLE_DATA" | cut -d: -f1)
+  THROTTLE_TS=$(echo "$THROTTLE_DATA" | cut -d: -f2)
+  NOW=$(date +%s)
+
+  # Reset if window expired
+  if [[ $((NOW - THROTTLE_TS)) -ge $THROTTLE_WINDOW ]]; then
+    THROTTLE_COUNT=0
+    THROTTLE_TS=$NOW
+  fi
+
+  # Hard stop if throttle exceeded
+  if [[ $THROTTLE_COUNT -ge $THROTTLE_MAX ]]; then
+    echo "🛑 Ralph loop: Throttle limit ($THROTTLE_MAX per ${THROTTLE_WINDOW}s) reached. Cooling down." >&2
+    rm "$THROTTLE_FILE"
+    rm "$RALPH_STATE_FILE"
+    exit 0
+  fi
+else
+  THROTTLE_COUNT=0
+  THROTTLE_TS=$(date +%s)
+fi
+
+# Extract last assistant message
 if ! grep -q '"role":"assistant"' "$TRANSCRIPT_PATH"; then
-  echo "⚠️  Ralph loop: No assistant messages found in transcript" >&2
-  echo "   Transcript: $TRANSCRIPT_PATH" >&2
-  echo "   This is unusual and may indicate a transcript format issue" >&2
-  echo "   Ralph loop is stopping." >&2
+  echo "⚠️  Ralph loop: No assistant messages in transcript" >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
 
-# Extract last assistant message with explicit error handling
 LAST_LINE=$(grep '"role":"assistant"' "$TRANSCRIPT_PATH" | tail -1)
 if [[ -z "$LAST_LINE" ]]; then
   echo "⚠️  Ralph loop: Failed to extract last assistant message" >&2
-  echo "   Ralph loop is stopping." >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
 
-# Parse JSON with error handling
-# Use subshell to properly capture jq exit code
 if ! LAST_OUTPUT=$(echo "$LAST_LINE" | jq -r '
   .message.content |
   map(select(.type == "text")) |
   map(.text) |
   join("\n")
 ' 2>&1); then
-  echo "⚠️  Ralph loop: Failed to parse assistant message JSON" >&2
-  echo "   Error: $LAST_OUTPUT" >&2
-  echo "   This may indicate a transcript format issue" >&2
-  echo "   Ralph loop is stopping." >&2
+  echo "⚠️  Ralph loop: Failed to parse assistant message" >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
 
 if [[ -z "$LAST_OUTPUT" ]]; then
-  echo "⚠️  Ralph loop: Assistant message contained no text content" >&2
-  echo "   Ralph loop is stopping." >&2
+  echo "⚠️  Ralph loop: Empty assistant message" >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
 
-# Check for completion promise (only if set)
+# --- Fast path: explicit completion promise ---
+# If the promise tag is present with the exact text, skip Haiku judge
 if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
-  # Extract text from <promise> tags
-  # Try grep first (more portable), fall back to perl for complex cases
-  if command -v grep &>/dev/null && echo "$LAST_OUTPUT" | grep -q '<promise>'; then
-    # Use grep -oP if available (GNU grep), otherwise sed
-    if echo "" | grep -oP '' &>/dev/null 2>&1; then
-      PROMISE_TEXT=$(echo "$LAST_OUTPUT" | grep -oP '<promise>\K[^<]+' | head -1 | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    else
-      # Portable sed extraction
-      PROMISE_TEXT=$(echo "$LAST_OUTPUT" | sed -n 's/.*<promise>\([^<]*\)<\/promise>.*/\1/p' | head -1 | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    fi
-  elif command -v perl &>/dev/null; then
-    # Perl fallback for multiline/complex cases
-    PROMISE_TEXT=$(echo "$LAST_OUTPUT" | perl -0777 -pe 's/.*?<promise>(.*?)<\/promise>.*/$1/s; s/^\s+|\s+$//g; s/\s+/ /g' 2>/dev/null || echo "")
-  else
-    PROMISE_TEXT=""
+  PROMISE_TEXT=""
+  if echo "$LAST_OUTPUT" | grep -q '<promise>'; then
+    PROMISE_TEXT=$(echo "$LAST_OUTPUT" | sed -n 's/.*<promise>\([^<]*\)<\/promise>.*/\1/p' | head -1 | tr -s ' ' | sed 's/^ *//;s/ *$//')
   fi
-
-  # Use = for literal string comparison (not pattern matching)
-  # == in [[ ]] does glob pattern matching which breaks with *, ?, [ characters
   if [[ -n "$PROMISE_TEXT" ]] && [[ "$PROMISE_TEXT" = "$COMPLETION_PROMISE" ]]; then
     echo "✅ Ralph loop: Detected <promise>$COMPLETION_PROMISE</promise>"
+    rm -f "$THROTTLE_FILE"
     rm "$RALPH_STATE_FILE"
     exit 0
   fi
 fi
 
-# Not complete - continue loop with SAME PROMPT
-NEXT_ITERATION=$((ITERATION + 1))
+# --- Haiku judge: is the work actually done? ---
+# Extract context for the judge (last few transcript entries, capped at 16KB)
+JUDGE_CONTEXT=$(tail -n 4 "$TRANSCRIPT_PATH" | jq -s '.' 2>/dev/null | head -c 16384)
 
-# Extract prompt (everything after the closing ---)
-# Skip first --- line, skip until second --- line, then print everything after
-# Use i>=2 instead of i==2 to handle --- in prompt content
+# Extract the original task prompt from state file
 PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$RALPH_STATE_FILE")
 
 if [[ -z "$PROMPT_TEXT" ]]; then
-  echo "⚠️  Ralph loop: State file corrupted or incomplete" >&2
-  echo "   File: $RALPH_STATE_FILE" >&2
-  echo "   Problem: No prompt text found" >&2
-  echo "" >&2
-  echo "   This usually means:" >&2
-  echo "     • State file was manually edited" >&2
-  echo "     • File was corrupted during writing" >&2
-  echo "" >&2
-  echo "   Ralph loop is stopping. Run /ralph-loop again to start fresh." >&2
+  echo "⚠️  Ralph loop: No prompt text in state file" >&2
   rm "$RALPH_STATE_FILE"
   exit 0
 fi
 
-# Update iteration in frontmatter (portable across macOS and Linux)
-# Create temp file, then atomically replace
+# Build the judge prompt
+JUDGE_SYSTEM="You are a strict completion verifier for an autonomous agent loop. Your job: determine if the agent has GENUINELY finished or is just CLAIMING to be done.
+
+CRITICAL: Agents reward-hack completion. Saying 'done' is NOT evidence of being done. Showing test output is NOT evidence unless ALL structural gates passed. Default to CONTINUE when uncertain.
+
+CONTINUE (should_continue: true) when the assistant:
+  - States next steps it intends to take
+  - Has pending items in a checklist or TODO
+  - Encountered an error or test failure not yet resolved
+  - Is partway through implementation
+  - Claims completion but the output shows incomplete work (missing tests, failing lint, no integration verification, no cross-agent review, no walkthrough written)
+  - Claims completion but has NOT shown: all tests passing AND lint/types clean AND integration verified AND cross-agent review done AND TODO.md walkthrough written
+  - Says 'done' without evidence of verification gates passing
+
+STOP (should_continue: false) ONLY when:
+  - The assistant output contains <promise>COMPLETION_TAG</promise> with the exact expected tag
+  - The assistant is genuinely BLOCKED and cannot proceed (missing credentials, access denied, dependency unavailable)
+  - Max iterations would be exceeded
+
+NEVER stop just because the assistant:
+  - Says it is done or complete
+  - Shows tests passing (tests passing != feature working)
+  - Writes a summary
+  - Asks if the user wants anything else
+
+The agent MUST output the explicit <promise> tag to stop. Everything else = CONTINUE."
+
+JUDGE_SCHEMA='{
+  "type": "object",
+  "properties": {
+    "should_continue": { "type": "boolean" },
+    "reasoning": { "type": "string" }
+  },
+  "required": ["should_continue", "reasoning"],
+  "additionalProperties": false
+}'
+
+JUDGE_PROMPT="Original task:
+---
+$PROMPT_TEXT
+---
+
+Assistant's latest output (last ~16KB of conversation):
+---
+$JUDGE_CONTEXT
+---
+
+Classify: should the loop continue or is the task done?"
+
+# Call Haiku judge with recursion guard
+JUDGE_RESULT=""
+SHOULD_CONTINUE="false"
+JUDGE_REASONING=""
+
+if command -v claude &>/dev/null; then
+  # Create isolated working dir for judge
+  JUDGE_DIR="${HOME}/.claude/ralph-judge"
+  mkdir -p "$JUDGE_DIR"
+
+  if JUDGE_RESULT=$(
+    CLAUDE_HOOK_JUDGE_MODE=true \
+    timeout "$JUDGE_TIMEOUT" \
+    claude --print \
+      --model "$JUDGE_MODEL" \
+      --output-format json \
+      --json-schema "$JUDGE_SCHEMA" \
+      --system-prompt "$JUDGE_SYSTEM" \
+      --disallowedTools '*' \
+      --cwd "$JUDGE_DIR" \
+      "$JUDGE_PROMPT" 2>/dev/null
+  ); then
+    SHOULD_CONTINUE=$(echo "$JUDGE_RESULT" | jq -r '.should_continue // false')
+    JUDGE_REASONING=$(echo "$JUDGE_RESULT" | jq -r '.reasoning // "no reasoning"')
+  else
+    # Judge failed — fail open (allow stop)
+    echo "⚠️  Ralph loop: Haiku judge timed out or failed. Allowing stop (fail-open)." >&2
+    exit 0
+  fi
+else
+  # claude CLI not available — fall back to always-continue (original behavior)
+  echo "⚠️  Ralph loop: claude CLI not found, falling back to auto-continue" >&2
+  SHOULD_CONTINUE="true"
+  JUDGE_REASONING="fallback: no judge available"
+fi
+
+# --- Judge says done: allow stop ---
+if [[ "$SHOULD_CONTINUE" != "true" ]]; then
+  echo "✅ Ralph loop: Haiku judge says complete (iteration $ITERATION)"
+  echo "   Reasoning: $JUDGE_REASONING"
+  rm -f "$THROTTLE_FILE"
+  rm "$RALPH_STATE_FILE"
+  exit 0
+fi
+
+# --- Judge says continue: block stop ---
+NEXT_ITERATION=$((ITERATION + 1))
+
+# Update throttle counter
+echo "$((THROTTLE_COUNT + 1)):$THROTTLE_TS" > "$THROTTLE_FILE"
+
+# Update iteration in state file atomically
 TEMP_FILE="${RALPH_STATE_FILE}.tmp.$$"
 trap "rm -f '$TEMP_FILE'" EXIT
 sed "s/^iteration: .*/iteration: $NEXT_ITERATION/" "$RALPH_STATE_FILE" > "$TEMP_FILE"
 mv "$TEMP_FILE" "$RALPH_STATE_FILE"
-trap - EXIT  # Clear trap after successful mv
+trap - EXIT
 
-# Build system message with iteration count and completion promise info
+# Build system message
 if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
-  SYSTEM_MSG="🔄 Ralph iteration $NEXT_ITERATION | To stop: output <promise>$COMPLETION_PROMISE</promise> (ONLY when statement is TRUE - do not lie to exit!)"
+  SYSTEM_MSG="🔄 Ralph iteration $NEXT_ITERATION (judge: continue) | To stop: output <promise>$COMPLETION_PROMISE</promise> (ONLY when TRUE)"
 else
-  SYSTEM_MSG="🔄 Ralph iteration $NEXT_ITERATION | No completion promise set - loop runs infinitely"
+  SYSTEM_MSG="🔄 Ralph iteration $NEXT_ITERATION (judge: continue — $JUDGE_REASONING)"
 fi
 
-# Output JSON to block the stop and feed prompt back
-# The "reason" field contains the prompt that will be sent back to Claude
+# Block stop and feed prompt back
 jq -n \
   --arg prompt "$PROMPT_TEXT" \
   --arg msg "$SYSTEM_MSG" \
@@ -188,5 +279,4 @@ jq -n \
     "systemMessage": $msg
   }'
 
-# Exit 0 for successful hook execution
 exit 0
