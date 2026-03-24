@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 
 # Cancel Ralph loop script
 # Usage: cancel-ralph.sh [--list | --all]

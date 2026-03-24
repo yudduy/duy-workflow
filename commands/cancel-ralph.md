@@ -19,6 +19,7 @@ Cancel the Ralph loop for the current session, or manage all active loops.
 ## Check Current Session
 
 ```!
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 # Get this session's PID
 CLAUDE_SESSION_PID=$PPID
 STATE_FILE=".claude/ralph-loop.${CLAUDE_SESSION_PID}.local.md"

@@ -1,7 +1,7 @@
 ---
-description: Ralph-powered scientific discovery — map the frontier, stress-test hypotheses, distill into incompressible principles. Produces vault-native knowledge.
+description: Ralph-powered scientific discovery -- map the frontier, stress-test hypotheses, distill into incompressible principles. Produces vault-native knowledge.
 argument-hint: "<problem-statement> [--knowledge PATH] [--team] [--max-iterations N]"
-allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, mcp__alphaxiv-ask__ask_alphaxiv
+allowed-tools: Task, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__claude_ai_alphaxiv__embedding_similarity_search, mcp__claude_ai_alphaxiv__full_text_papers_search, mcp__claude_ai_alphaxiv__agentic_paper_retrieval, mcp__claude_ai_alphaxiv__get_paper_content, mcp__claude_ai_alphaxiv__answer_pdf_queries, mcp__deepwiki__ask_question
 ---
 
 # /discover
@@ -22,28 +22,34 @@ Output: ONE clean DISCOVERY.md. Working notes constrained to 4 fixed slots.
 
 ## Multi-Model Tools
 
-- **Search**: ask_alphaxiv (primary — paper-grounded), Exa MCP (web_search_exa), WebSearch
+- **Search**: ask_alphaxiv (primary -- paper-grounded), Exa MCP (web_search_exa), WebSearch
 - **Verify sources**: WebFetch on arxiv.org/html/{id}
 - **Cross-verify + propose**: codex exec (peer review + abduction), gemini -p (adversarial + abduction)
 
-**Codex is a persistent thinking partner** — one session for the entire discovery, resumed each iteration:
+**Codex is a persistent thinking partner** -- one session for the entire discovery, resumed each iteration:
 - Accumulates understanding of the problem, landscape, dead ends, and hypotheses
 - Can independently propose directions, critique hypotheses, and explore literature
 - Session stored in TODO.md under `## Sessions`
 - All calls use `codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check`
-- Gemini has no session resume — each `gemini -p` call is fresh. Keep gemini prompts self-contained.
+- Gemini has no session resume -- each `gemini -p` call is fresh. Keep gemini prompts self-contained.
 
 ## Setup
 
 ```bash
 mkdir -p docs/discoveries/{topic-slug}/notes
+find /tmp -maxdepth 1 -name 'claude-discover-*' -type d -mtime +1 -exec rm -rf {} + 2>/dev/null
+WS=/tmp/claude-discover-$(openssl rand -hex 4)
+mkdir -p $WS
+echo "Workspace: $WS"
 ```
+
+**All temp file paths use `$WS/` -- never hardcode `/tmp/codex-*.txt` or `/tmp/ralph-*.txt`.** Prevents stale reads across sessions.
 
 ### KG Survey (before researching)
 
 Check what the vault already knows:
 
-1. Read `Obsidian-Template-Vault/VAULT-INDEX.md` — scan Distillations table and Knowledge Graph (MOCs)
+1. Read `Obsidian-Template-Vault/VAULT-INDEX.md` -- scan Distillations table and Knowledge Graph (MOCs)
 2. Identify MOCs relevant to the topic (by title/domain match)
 3. For each relevant MOC: read its `## Key Insights` section
 4. For each relevant MOC: read its `## Questions to Explore` section
@@ -57,7 +63,7 @@ If `--knowledge` flag was provided, read the knowledge file and incorporate into
 
 ### Output Files
 
-**DISCOVERY.md** — The single readable artifact. Overwrite freely. Always reflects current best understanding.
+**DISCOVERY.md** -- The single readable artifact. Overwrite freely. Always reflects current best understanding.
 
 ```markdown
 # Discovery: {Topic}
@@ -68,7 +74,7 @@ If `--knowledge` flag was provided, read the knowledge file and incorporate into
 [What is the REAL problem? The question behind the question.]
 
 ## The Landscape
-[What exists today — current SOTA, known limits, key researchers, failed approaches. Every claim CITED.]
+[What exists today -- current SOTA, known limits, key researchers, failed approaches. Every claim CITED.]
 
 ## What We Found
 [THE finding. The hypothesis that survived adversarial scrutiny.
@@ -77,18 +83,18 @@ If `--knowledge` flag was provided, read the knowledge file and incorporate into
 ## First Principles
 {3-7 load-bearing truths extracted from the discovery. Each vary-tested.}
 
-1. **Name** — One sentence. [Source] ⬛ FOUNDATION — hard to vary; negating breaks {what}
-2. **Name** — One sentence. [Source] ⬜ OPEN — {what varies}; competing framings: {A vs B}
+1. **Name** -- One sentence. [Source] ⬛ FOUNDATION -- hard to vary; negating breaks {what}
+2. **Name** -- One sentence. [Source] ⬜ OPEN -- {what varies}; competing framings: {A vs B}
 
 ## Evidence
 ### Supporting
-- [finding — CITE source]
+- [finding -- CITE source]
 
 ### Contradicting
-- [counterpoint — CITE source]
+- [counterpoint -- CITE source]
 
 ### Attacks Survived
-- [specific adversarial critique it withstood — what was claimed, why it held]
+- [specific adversarial critique it withstood -- what was claimed, why it held]
 
 ## Dead Ends
 | Approach | Why It Failed | What We Learned |
@@ -104,7 +110,7 @@ If `--knowledge` flag was provided, read the knowledge file and incorporate into
 {Driven by the highest-value ⬜ OPEN principle above.
 - Which OPEN principle this emerges from
 - The competing framings that make it genuinely open
-- What would resolve it — experiment, evidence, or artifact}
+- What would resolve it -- experiment, evidence, or artifact}
 
 ## Sources
 ### Foundational (field-defining)
@@ -121,10 +127,10 @@ If `--knowledge` flag was provided, read the knowledge file and incorporate into
 - **Next discovery**: {frontier question from OPEN principle}
 ```
 
-**TODO.md** — Living roadmap. Both Claude and Codex read/update every iteration. NOT a frozen plan.
+**TODO.md** -- Living roadmap. Both Claude and Codex read/update every iteration. NOT a frozen plan.
 
 ```markdown
-# TODO: Discovery — {Topic}
+# TODO: Discovery -- {Topic}
 
 ## Sessions
 codex_session: {UUID}
@@ -141,9 +147,9 @@ MAP LANDSCAPE | HYPOTHESIZE | STRESS-TEST | VALIDATE | DISTILL
 Living plan. Add, remove, reorder as understanding deepens.
 
 ### Landscape
-- [x] alphaxiv 3-pass interrogation — Claude, iter 1
-- [x] verify top 3 claimed mechanisms via WebFetch — Claude, iter 2
-- [x] Codex independent literature survey — Codex, iter 1
+- [x] alphaxiv 3-pass interrogation -- Claude, iter 1
+- [x] verify top 3 claimed mechanisms via WebFetch -- Claude, iter 2
+- [x] Codex independent literature survey -- Codex, iter 1
 - [ ] impossibility results and fundamental limits ← ACTIVE
 - [ ] failed approaches survey
 
@@ -155,7 +161,7 @@ Living plan. Add, remove, reorder as understanding deepens.
 
 ### Stress-Test
 - [ ] Claude verifier (WebSearch for contradictions)
-- [ ] Codex peer review (resume — has full context)
+- [ ] Codex peer review (resume -- has full context)
 - [ ] Gemini adversarial critique
 - [ ] Triangulate verdicts
 - [ ] Address critiques or PIVOT
@@ -171,7 +177,7 @@ Living plan. Add, remove, reorder as understanding deepens.
 - [ ] Contrarian truth
 - [ ] What Changes (doable in 24h)
 - [ ] The Next Discovery
-- [ ] Compress — SHORTER not longer
+- [ ] Compress -- SHORTER not longer
 
 ## Amendments
 Changes to the plan discovered during research:
@@ -185,7 +191,7 @@ Changes to the plan discovered during research:
 - {iter N: chose X over Y because...}
 
 ## Concerns
-- {things that feel off — flag before they become problems}
+- {things that feel off -- flag before they become problems}
 ```
 
 **Rules:**
@@ -194,7 +200,7 @@ Changes to the plan discovered during research:
 - Every 5 iterations → "is the roadmap still right?"
 - Codex reads TODO.md on every resume; Claude reads it at ORIENT
 
-**notes/ — 4 fixed slots. No other files.**
+**notes/ -- 4 fixed slots. No other files.**
 
 | File | Owner (team mode) | Purpose |
 |------|-------------------|---------|
@@ -204,23 +210,25 @@ Changes to the plan discovered during research:
 | `notes/dead-ends.md` | Critic | What failed, why, what was learned. One entry per dead end. |
 
 **Document Rules:**
-1. DISCOVERY.md is the product — overwrite freely
-2. TODO.md is the shared roadmap — both agents read/update every iteration
-3. notes/ has exactly 4 files — agents write to their slots, nowhere else
+1. DISCOVERY.md is the product -- overwrite freely
+2. TODO.md is the shared roadmap -- both agents read/update every iteration
+3. notes/ has exactly 4 files -- agents write to their slots, nowhere else
 4. Every claim in DISCOVERY.md must have a citation
 5. Rejected hypotheses get ONE ROW in Dead Ends table. Details in notes/dead-ends.md.
 
 ## Ralph Loop
 
 ```!
-cat > /tmp/ralph-discover-prompt.txt << 'PROMPT_EOF'
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+RALPH_PROMPT=$(mktemp /tmp/claude-discover-prompt-XXXXXX.txt)
+cat > "$RALPH_PROMPT" << 'PROMPT_EOF'
 You are a discovery agent with a persistent Codex thinking partner. Produce a DISCOVERY.md containing the finding that survived adversarial scrutiny, distilled into first principles. The problem statement is in the conversation context above.
 
 ## OUTPUT FILES
 
 Write to docs/discoveries/{topic-slug}/:
-- DISCOVERY.md — the readable product
-- TODO.md — shared living roadmap (you + Codex both read/update)
+- DISCOVERY.md -- the readable product
+- TODO.md -- shared living roadmap (you + Codex both read/update)
 - notes/landscape.md, notes/evidence.md, notes/analogies.md, notes/dead-ends.md
 
 Do NOT create any other files in notes/.
@@ -230,7 +238,7 @@ Do NOT create any other files in notes/.
 Initialize on first iteration via Bash tool:
 
     CODEX_OUTPUT=$(codex exec --json --full-auto --skip-git-repo-check \
-      -o /tmp/codex-discover.txt \
+      -o $WS/codex-discover.txt \
       'You are a persistent thinking partner for a discovery process.
        Problem: {problem statement}
        Your role: independently explore literature, propose directions, critique hypotheses.
@@ -242,7 +250,7 @@ Store in TODO.md under ## Sessions. All subsequent calls use: codex exec resume 
 
 ## TODO.md IS THE PLAN
 
-Read TODO.md every iteration. Update after every action. The plan is a hypothesis — amend it as understanding deepens. Add tasks, remove tasks, reorder. Every 5 iterations: 'is the roadmap still right?'
+Read TODO.md every iteration. Update after every action. The plan is a hypothesis -- amend it as understanding deepens. Add tasks, remove tasks, reorder. Every 5 iterations: 'is the roadmap still right?'
 
 ## ITERATION LOOP
 
@@ -260,8 +268,8 @@ Before hypothesizing, understand what exists. Run in parallel:
 **Codex (resume via Bash tool):**
 
     codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-      -o /tmp/codex-landscape.txt \
-      'Independent landscape survey for: {problem}. Use DeepWiki for relevant repos. Search broadly. What do YOU find that I might miss? Write findings — I will merge into notes/landscape.md.'
+      -o $WS/codex-landscape.txt \
+      'Independent landscape survey for: {problem}. Use DeepWiki for relevant repos. Search broadly. What do YOU find that I might miss? Write findings -- I will merge into notes/landscape.md.'
 
 **Task subagents:** impossibility results, failed approaches, cross-domain analogies
 
@@ -273,21 +281,21 @@ Update TODO.md: check off completed items, add new leads discovered.
 
 ### HYPOTHESIZE (when landscape is mapped)
 
-**Multi-model abductive reasoning** — all three propose independently:
+**Multi-model abductive reasoning** -- all three propose independently:
 
 You: Generate 2-3 candidates from landscape + analogies.
 
-Codex (resume — already has landscape context, via Bash tool):
+Codex (resume -- already has landscape context, via Bash tool):
 
     codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-      -o /tmp/codex-hypotheses.txt \
+      -o $WS/codex-hypotheses.txt \
       'Based on everything we have explored so far, propose 2-3 hypotheses:
        1. What pattern suggests a non-obvious explanation? (abduction)
        2. What direction is not obvious from the landscape?
        3. What assumption is everyone taking for granted?
        For each: falsifiable statement, kill condition, first test.'
 
-Gemini (fresh — self-contained prompt, via Bash tool):
+Gemini (fresh -- self-contained prompt, via Bash tool):
 
     gemini -p 'DIRECTION PROPOSAL
     Problem: {problem statement}. Known: {landscape summary}. Failed: {dead ends}.
@@ -301,15 +309,15 @@ Update TODO.md with selected hypothesis and next steps.
 
 **Multi-model cross-verification.** Three perspectives, disagreement = signal.
 
-Claude: Delegate VERIFIER subagent (Task) — WebSearch for contradictions, existing work, counterexamples. Write to notes/evidence.md.
+Claude: Delegate VERIFIER subagent (Task) -- WebSearch for contradictions, existing work, counterexamples. Write to notes/evidence.md.
 
-Codex (resume — remembers proposing the hypothesis, via Bash tool):
+Codex (resume -- remembers proposing the hypothesis, via Bash tool):
 
     codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-      -o /tmp/codex-review.txt \
+      -o $WS/codex-review.txt \
       'We selected hypothesis: {statement}. Kill criterion: {criterion}.
        Peer review: Is it falsifiable? Confounds? Simpler explanation? Weakest assumption?
-       Be direct. You proposed alternatives earlier — do you still think this is the best one?'
+       Be direct. You proposed alternatives earlier -- do you still think this is the best one?'
 
 Gemini (via Bash tool):
 
@@ -333,7 +341,7 @@ Update TODO.md with verdict and next action.
 
    Codex:
        codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-         -o /tmp/codex-final.txt \
+         -o $WS/codex-final.txt \
          'FINAL REVIEW: Our conclusion is {statement}, confidence {N}. Key evidence: {summary}.
           You have been with this from the start. Is this justified? What caveats? What did we miss?'
 
@@ -348,10 +356,10 @@ Compress into first principles:
 1. Extract 3-7 load-bearing truths from discovery + evidence
 2. Vary-test each: NEGATE (decorative?), SWAP (alternative?), SCOPE (universal?)
 3. Rate: ⬛ FOUNDATION or ⬜ OPEN
-4. Contrarian truth — true but unpopular
-5. What Changes — doable in 24 hours
-6. The Next Discovery — from highest-value ⬜ OPEN
-7. COMPRESS — DISCOVERY.md gets SHORTER, not longer
+4. Contrarian truth -- true but unpopular
+5. What Changes -- doable in 24 hours
+6. The Next Discovery -- from highest-value ⬜ OPEN
+7. COMPRESS -- DISCOVERY.md gets SHORTER, not longer
 
 ## SELF-CHECK (each iteration)
 - Did I find genuinely new information?
@@ -377,28 +385,30 @@ Before completing:
 
 ## COMPLETION
 
-When the discovery is solid — not when phases are done:
+When the discovery is solid -- not when phases are done:
 1. Update DISCOVERY.md with final state and honest confidence
 2. Run KG Deposit:
    a. Write to vault: Obsidian-Template-Vault/3. Resources (Dynamic)/Distillations/Discovery - {Title}.md
       Frontmatter: tags (content/distillation, topics/{slug}), type: research, status: completed
-   b. Extract 3-7 atomic insights — Glob existing Insight - *.md first to avoid dupes
+   b. Extract 3-7 atomic insights -- Glob existing Insight - *.md first to avoid dupes
    c. Update or create MOC - {Topic}.md in 3. Resources (Dynamic)/
    d. Update MOC - Research Index.md with vault wikilinks
    e. Update VAULT-INDEX.md if new MOC or distillation
-3. <promise>DISCOVERY_COMPLETE</promise>
+3. Clean up workspace: `rm -rf $WS`
+4. <promise>DISCOVERY_COMPLETE</promise>
 
 If stuck: <promise>BLOCKED: [reason]</promise>
 PROMPT_EOF
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
   --max-iterations "${MAX_ITER:-30}" \
   --completion-promise "DISCOVERY_COMPLETE" \
-  "$(cat /tmp/ralph-discover-prompt.txt)"
+  "$(cat "$RALPH_PROMPT")"
+rm -f "$RALPH_PROMPT"
 ```
 
 ## Team Mode (--team flag)
 
-When `--team` is specified, the Ralph loop lead dispatches Task subagents each iteration. No persistent agents — the 4 note files carry state between iterations. Each subagent reads files, does work, writes to its assigned slot, returns.
+When `--team` is specified, the Ralph loop lead dispatches Task subagents each iteration. No persistent agents -- the 4 note files carry state between iterations. Each subagent reads files, does work, writes to its assigned slot, returns.
 
 ### Subagent Prompts
 
@@ -412,9 +422,9 @@ Read docs/discoveries/{topic}/notes/landscape.md for what's already mapped.
 Your job: find what's MISSING from the landscape.
 
 Tool priority:
-1. ask_alphaxiv — synthesized paper-grounded answers (use iterative 3-pass: landscape → drill → pressure test, reuse conversation_id)
-2. Exa MCP (web_search_exa) — semantic search
-3. WebSearch — broad search
+1. ask_alphaxiv -- synthesized paper-grounded answers (use iterative 3-pass: landscape → drill → pressure test, reuse conversation_id)
+2. Exa MCP (web_search_exa) -- semantic search
+3. WebSearch -- broad search
 
 ⚠ alphaXiv returns REAL paper IDs but may FABRICATE specific mechanisms. After alphaxiv calls:
 - Pick 2-3 most critical claimed mechanisms
@@ -422,8 +432,8 @@ Tool priority:
 - Unverified claims → notes/dead-ends.md, not landscape
 
 Write to TWO files ONLY:
-- docs/discoveries/{topic}/notes/landscape.md — append VERIFIED findings (SOTA, limits, researchers, papers)
-- docs/discoveries/{topic}/notes/evidence.md — Supporting section: evidence for current hypothesis
+- docs/discoveries/{topic}/notes/landscape.md -- append VERIFIED findings (SOTA, limits, researchers, papers)
+- docs/discoveries/{topic}/notes/evidence.md -- Supporting section: evidence for current hypothesis
 Do NOT create other files. Do NOT write to DISCOVERY.md.
 Focus on: {lead's specific directive for this iteration}
 ```
@@ -436,7 +446,7 @@ Read docs/discoveries/{topic}/notes/landscape.md for the landscape.
 Read docs/discoveries/{topic}/notes/evidence.md for current evidence.
 Your job: {generate | refine | defend} hypothesis. Find cross-domain analogies.
 Write to ONE file ONLY:
-- docs/discoveries/{topic}/notes/analogies.md — hypothesis reasoning, cross-domain transfers, feasibility
+- docs/discoveries/{topic}/notes/analogies.md -- hypothesis reasoning, cross-domain transfers, feasibility
 Do NOT create other files. Do NOT write to DISCOVERY.md.
 {Lead's specific directive for this iteration}
 ```
@@ -444,8 +454,8 @@ Do NOT create other files. Do NOT write to DISCOVERY.md.
 **CRITIC** (model: opus, subagent_type: general-purpose):
 ```
 You are an adversarial critic. Problem: {problem statement}
-Read docs/discoveries/{topic}/DISCOVERY.md — the current hypothesis.
-Read docs/discoveries/{topic}/notes/evidence.md — what evidence exists.
+Read docs/discoveries/{topic}/DISCOVERY.md -- the current hypothesis.
+Read docs/discoveries/{topic}/notes/evidence.md -- what evidence exists.
 Your job: find flaws. WebSearch for contradicting evidence, existing work, counterexamples.
 
 Also run multi-model critique via Bash:
@@ -454,8 +464,8 @@ Also run multi-model critique via Bash:
 Log all three perspectives (yours + codex + gemini) in evidence.md.
 
 Write to TWO files ONLY:
-- docs/discoveries/{topic}/notes/evidence.md — Contradicting section: counterevidence with citations + multi-model verdicts table
-- docs/discoveries/{topic}/notes/dead-ends.md — approaches that failed, why, learnings
+- docs/discoveries/{topic}/notes/evidence.md -- Contradicting section: counterevidence with citations + multi-model verdicts table
+- docs/discoveries/{topic}/notes/dead-ends.md -- approaches that failed, why, learnings
 Do NOT create other files. Do NOT write to DISCOVERY.md.
 GROUNDING REQUIREMENT: Every critique must have a web citation or logical contradiction.
 Rate each flaw 0-100 confidence. Verdict: REJECT / REVISE / ACCEPT.
@@ -465,25 +475,27 @@ Rate each flaw 0-100 confidence. Verdict: REJECT / REVISE / ACCEPT.
 ### Lead Coordination
 
 ```!
-cat > /tmp/ralph-discover-lead-prompt.txt << 'PROMPT_EOF'
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+RALPH_LEAD_PROMPT=$(mktemp /tmp/claude-discover-lead-XXXXXX.txt)
+cat > "$RALPH_LEAD_PROMPT" << 'PROMPT_EOF'
 You are the discovery lead. Do NOT research or hypothesize yourself. You dispatch subagents + Codex and synthesize.
 
 Each iteration:
-1. Read TODO.md — what's active, what's next, any concerns?
+1. Read TODO.md -- what's active, what's next, any concerns?
 2. Read ALL 4 note files in docs/discoveries/{topic}/notes/
 3. Read DISCOVERY.md
-4. Decide what work is needed — follow TODO.md roadmap, but adapt:
+4. Decide what work is needed -- follow TODO.md roadmap, but adapt:
    - Landscape: spawn Scout + Codex (resume) in parallel
    - Hypothesize: spawn Theorist + Codex (resume for abduction) + gemini -p
    - Stress-test: spawn Critic + Codex (resume for peer review) + gemini -p
    - Validate: spawn Scout for recent papers + Codex (resume for final review)
    - Distill: spawn Theorist for vary-testing principles
-5. Wait for agents. Synthesize ALL note files into DISCOVERY.md — current beliefs only
-6. Update TODO.md — check off items, add new tasks, note decisions, flag concerns
+5. Wait for agents. Synthesize ALL note files into DISCOVERY.md -- current beliefs only
+6. Update TODO.md -- check off items, add new tasks, note decisions, flag concerns
 7. Every 5 iterations: is the roadmap still right? Amend if not.
 
-Codex is persistent — resume the same session. It accumulates understanding.
-Gemini is fresh each call — self-contained prompts.
+Codex is persistent -- resume the same session. It accumulates understanding.
+Gemini is fresh each call -- self-contained prompts.
 
 When stopping:
 1. Update DISCOVERY.md with final state
@@ -493,7 +505,8 @@ PROMPT_EOF
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh" \
   --max-iterations "${MAX_ITER:-30}" \
   --completion-promise "DISCOVERY_COMPLETE" \
-  "$(cat /tmp/ralph-discover-lead-prompt.txt)"
+  "$(cat "$RALPH_LEAD_PROMPT")"
+rm -f "$RALPH_LEAD_PROMPT"
 ```
 
 ### Token Efficiency
@@ -501,9 +514,9 @@ PROMPT_EOF
 - Theorist + Critic: Opus (deep reasoning)
 - Codex: persistent session via `resume` (no re-sending context)
 - Gemini: fresh each call (keep prompts self-contained)
-- Subagents are stateless — files carry context between iterations
+- Subagents are stateless -- files carry context between iterations
 - Spawn 2-3 subagents in parallel per iteration (run_in_background: true)
-- Lead only synthesizes — never searches or hypothesizes
+- Lead only synthesizes -- never searches or hypothesizes
 
 ## Output
 

@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 
 # Format-on-save hook for Write/Edit operations
 # Detects project formatter and runs it silently on the edited file
