@@ -10,6 +10,23 @@ Takes a question and produces the incompressible kernel. Not a knowledge dump --
 
 3-agent team (researcher + philosopher + editor) coordinated by a lead.
 
+## Foundational Rigors (apply throughout distillation)
+
+**Three-Question Audit** (`${CLAUDE_PLUGIN_ROOT}/templates/first-principles-rigor.md`):
+1. **DELETION**: Can you remove a word and the meaning survives? If yes, remove it. Incompressible = nothing left to cut.
+2. **PRESENCE**: Trace every principle to its primary source. "Everyone knows X" → who proved X? Under what conditions?
+3. **URGENCY**: Produce the first draft fast. Iterate to density. Naval-density comes from editing, not from slow writing.
+
+**Research Scaffold** (`${CLAUDE_PLUGIN_ROOT}/templates/research-scaffold.md`):
+→ Before distilling: alphaxiv for the canonical formulation → WebSearch for practitioner wisdom → verify claims against source.
+Distillation starts with finding the best existing formulations, then compressing further.
+
+**Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`):
+The 3-agent team (researcher + philosopher + editor) IS deliberation. Each round they see each other's critiques. Converge on the incompressible kernel before presenting to user.
+
+**Context Discipline** (`${CLAUDE_PLUGIN_ROOT}/templates/context-discipline.md`):
+Exploration = sub-agents. Targeted reads = yourself. Heavy lifting = sub-agents. Decisions = yourself.
+
 ## Flags
 
 - `--deep`: 3x iterations, broader source mining

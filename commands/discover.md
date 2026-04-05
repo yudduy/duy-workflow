@@ -10,6 +10,23 @@ Takes a problem. Maps the landscape exhaustively. Hunts for a robust hypothesis 
 
 Output: ONE clean DISCOVERY.md. Working notes constrained to 4 fixed slots.
 
+## Foundational Rigors (apply at every phase transition)
+
+**Three-Question Audit** (`${CLAUDE_PLUGIN_ROOT}/templates/first-principles-rigor.md`):
+1. **DELETION**: What is the minimum hypothesis that explains the observations? Kill decorative complexity.
+2. **PRESENCE**: Go to the actual data/code/paper. Verify claims against source. Reproduce before citing.
+3. **URGENCY**: Cheapest falsification first. Zero-cost checks before expensive experiments.
+
+**Research Scaffold** (`${CLAUDE_PLUGIN_ROOT}/templates/research-scaffold.md`):
+→ `gh search repos` → DeepWiki → alphaxiv (3 parallel) → clone significant repos → copy → scaffold.
+Discovery starts with exhausting what others have already found. Don't rediscover known results.
+
+**Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`):
+Every hypothesis, direction change, or conclusion → multi-model deliberation. Converge before presenting to user.
+
+**Context Discipline** (`${CLAUDE_PLUGIN_ROOT}/templates/context-discipline.md`):
+Exploration = sub-agents. Targeted reads = yourself. Heavy lifting = sub-agents. Decisions = yourself.
+
 ## Principles
 
 1. **Evidence over reasoning.** Every claim grounded in something you found. WebSearch is not optional.

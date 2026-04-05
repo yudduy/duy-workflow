@@ -1,16 +1,6 @@
 {
-  "description": "Ralph Wiggum plugin hooks - stop hook for loops, format-on-save for code quality",
+  "description": "duy-workflow plugin hooks - format-on-save for code quality",
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
