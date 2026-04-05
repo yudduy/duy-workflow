@@ -1,16 +1,35 @@
 ---
-description: "Iteratively verify, fix, and improve PoC code before experiments. Finds bugs, fixes them, re-verifies, researches frontier improvements, implements them. Doesn't just report -- delivers working code."
-argument-hint: "[path/to/poc]"
+description: "Verify built artifacts against original vision + frontier SOTA + maximum resource utilization. Iteratively finds gaps, fixes them, researches improvements, implements them. Delivers verified, frontier-informed, production-ready output."
+argument-hint: "[path/to/code] [--plan PATH] [--gpu] [--against-vision]"
 impact: CRITICAL
-when-to-use: Before running experiments - verifies correctness AND applies improvements
-allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash, Agent, WebSearch, WebFetch, mcp__deepwiki__ask_question, mcp__deepwiki__read_wiki_structure, mcp__claude_ai_alphaxiv__embedding_similarity_search, mcp__claude_ai_alphaxiv__full_text_papers_search, mcp__claude_ai_alphaxiv__agentic_paper_retrieval, mcp__claude_ai_alphaxiv__get_paper_content, mcp__claude_ai_alphaxiv__answer_pdf_queries, mcp__claude_ai_alphaxiv__read_files_from_github_repository
+when-to-use: After /execute completes, before experiments, before shipping — verifies correctness, vision fidelity, SOTA alignment, and GPU/resource optimization
+allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash, Agent, WebSearch, WebFetch, mcp__deepwiki__ask_question, mcp__deepwiki__read_wiki_structure, mcp__claude_ai_alphaxiv__embedding_similarity_search, mcp__claude_ai_alphaxiv__full_text_papers_search, mcp__claude_ai_alphaxiv__agentic_paper_retrieval, mcp__claude_ai_alphaxiv__get_paper_content, mcp__claude_ai_alphaxiv__answer_pdf_queries, mcp__claude_ai_alphaxiv__read_files_from_github_repository, mcp__colab-mcp__open_colab_browser_connection, mcp__colab-mcp__add_code_cell, mcp__colab-mcp__add_text_cell, mcp__colab-mcp__update_cell, mcp__colab-mcp__run_code_cell, mcp__colab-mcp__get_cells, mcp__colab-mcp__delete_cell
 ---
 
-# /verify-poc
+# /verify
 
-Verify, fix, and improve PoC code iteratively. Not a report generator -- an engineer that delivers working, frontier-informed code ready for experiments.
+Three-layer verification: (1) does it match the original vision? (2) is it aligned with frontier SOTA? (3) is it maximizing available resources?
 
-**The user's time is the most expensive resource. Don't hand them a list of bugs. Fix the bugs. Re-verify. Research improvements. Implement them. Hand back working code.**
+Not a report generator — an engineer that fixes everything it finds, re-verifies, and hands back production-ready output.
+
+**The user is the LAST checkpoint. Exhaust all verification internally. Fix before reporting.**
+
+## Foundational Rigors (apply at every verify-fix cycle)
+
+**Three-Question Audit** (`${CLAUDE_PLUGIN_ROOT}/templates/first-principles-rigor.md`):
+1. **DELETION**: What is the minimum fix? Don't refactor — fix the gap. Don't add features — verify fidelity to the vision.
+2. **PRESENCE**: Reproduce the failure. Read the error. Run the test. Compare against the plan's acceptance criteria line by line.
+3. **URGENCY**: Fix → re-verify → next gap. Don't batch. Ship each fix as soon as it's verified.
+
+**Research Scaffold** (`${CLAUDE_PLUGIN_ROOT}/templates/research-scaffold.md`):
+→ Before improving: `gh search repos` + DeepWiki for frontier implementations → alphaxiv for SOTA techniques → copy → adapt.
+Every improvement must come from a verified reference, not imagination. Clone the SOTA repo. Read the source. Copy. Adapt.
+
+**Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`):
+Before presenting to user → multi-model review. Codex tests, Gemini critiques, Claude verifies. User sees only converged, verified output.
+
+**Context Discipline** (`${CLAUDE_PLUGIN_ROOT}/templates/context-discipline.md`):
+Exploration = sub-agents. Targeted reads = yourself. Heavy lifting = sub-agents. Decisions = yourself.
 
 ---
 
@@ -109,6 +128,15 @@ If the PoC includes runnable experiments:
 2. Check: starts without error? Loss finite? Metrics collecting (no NaN)? Memory stable?
 3. If smoke test fails: diagnose, fix, re-verify (back to Phase 4), re-smoke-test
 4. **Parallelize independent conditions** -- if there are multiple experimental conditions (e.g., GRPO vs TB vs SegTB), smoke test ALL in parallel, not sequentially
+
+**GPU smoke tests use Google Colab MCP** (see `~/.claude/skills/google-colab/SKILL.md`):
+1. Experiment code MUST already be local .py files (from Phase 3 fixes)
+2. Connect: `open_colab_browser_connection`
+3. Setup cell: pip install + Drive mount + `!nvidia-smi -L`
+4. Smoke cell: `!python /content/drive/.../train.py --max-steps 2 --smoke-test`
+5. Read output via `get_cells` — check: no errors, loss finite, memory stable
+6. **Debug on CPU runtime first** — switch to GPU only for the actual smoke test
+7. Save smoke test output to Drive for the verification report
 
 ---
 
