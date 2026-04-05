@@ -1,14 +1,28 @@
 ---
 description: "Fully autonomous engineering loop with anti-reward-hacking scaffolding. Multi-model consultation at decisions. Process rewards via backpressure validators. Never asks the user."
 argument-hint: "[--max-iterations N]"
-allowed-tools: Task, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Agent, mcp__deepwiki__ask_question, mcp__claude_ai_alphaxiv__embedding_similarity_search, mcp__claude_ai_alphaxiv__full_text_papers_search, mcp__claude_ai_alphaxiv__agentic_paper_retrieval, mcp__claude_ai_alphaxiv__get_paper_content, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__get_page_text, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__tabs_context_mcp
+allowed-tools: Task, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Agent, mcp__deepwiki__ask_question, mcp__claude_ai_alphaxiv__embedding_similarity_search, mcp__claude_ai_alphaxiv__full_text_papers_search, mcp__claude_ai_alphaxiv__agentic_paper_retrieval, mcp__claude_ai_alphaxiv__get_paper_content, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__get_page_text, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__tabs_context_mcp, mcp__colab-mcp__open_colab_browser_connection, mcp__colab-mcp__add_code_cell, mcp__colab-mcp__add_text_cell, mcp__colab-mcp__update_cell, mcp__colab-mcp__run_code_cell, mcp__colab-mcp__get_cells, mcp__colab-mcp__delete_cell
 ---
 
 # /execute
 
 Fully autonomous. The user is away. Build the thing, verify it works, walk them through decisions when they return.
 
-## Pre-flight (MANDATORY -- run before anything else)
+## Foundational Rigors (apply before and during ALL work)
+
+Before each requirement, run the **Three-Question Audit** from `${CLAUDE_PLUGIN_ROOT}/templates/first-principles-rigor.md`:
+1. **DELETION**: What is the minimum viable implementation? Kill every step that can't survive "is this load-bearing?"
+2. **PRESENCE**: Go to the actual failure/code/test. Read the raw source, not summaries. Reproduce before diagnosing.
+3. **URGENCY**: What is the next action in the next 10 minutes? Ship the smallest thing that tests the hypothesis.
+
+Before writing ANY new code, run the **Research Scaffold** from `${CLAUDE_PLUGIN_ROOT}/templates/research-scaffold.md`:
+→ `gh search repos` + `gh search code` → DeepWiki on best candidates → alphaxiv (3 tools parallel) → git clone → copy → adapt.
+**Never build from scratch when a reference exists.** Source Map in the plan has the references — use them FIRST.
+
+**Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`):
+Every non-trivial decision → dispatch Codex + Gemini + Claude in parallel, iterate to convergence. The user is the LAST checkpoint. Exhaust web search, alphaxiv, DeepWiki, and multi-model deliberation BEFORE anything reaches the user.
+
+## Pre-flight
 
 ```bash
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
@@ -16,258 +30,180 @@ PLAN=$(ls -t .claude/plans/*.md 2>/dev/null | head -1)
 if [ -z "$PLAN" ]; then
   echo "BLOCKED: No plan found in .claude/plans/"
   echo "Run /interview first to create a Product Intent Document."
-  echo "The plan must be a file on disk -- Plan Mode context does not survive /clear."
   exit 1
 fi
-echo "Plan found: $PLAN"
+MISSING=""
+for section in "## Requirements" "## Build Environment" "## Source Map" "## Principles" "## Boundaries"; do
+  grep -q "$section" "$PLAN" || MISSING="$MISSING  - $section\n"
+done
+grep -q 'REQ-[0-9]' "$PLAN" || MISSING="$MISSING  - Enumerated requirements (REQ-1, REQ-2, ...)\n"
+[ -n "$MISSING" ] && echo "WARNING: Plan missing:" && echo -e "$MISSING"
 cat "$PLAN"
 ```
 
-If the pre-flight fails, do NOT proceed. Do NOT try to infer what to build from git history or README. Tell the user: "No plan found. Run /interview first."
+```bash
+export PLAN_PATH="$PLAN"
+```
+
+```bash
+set -euo pipefail
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/duy-workflow}"
+[ -d "$CLAUDE_PLUGIN_ROOT" ]
+mkdir -p .claude/mission
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sync-mission.py" --plan "$PLAN_PATH" --phase execute
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-phase execute >/dev/null
+export MISSION_DIR=".claude/mission"
+ls -la "$MISSION_DIR"
+```
+
+If pre-flight fails, STOP. Do not infer from git history. Tell the user: "No plan found. Run /interview first."
 
 ## Autonomy Rules
 
-- **NEVER AskUserQuestion** for technical decisions. Dispatch to Codex/Gemini instead.
-- **Only stop for**: missing credentials, missing access, genuinely unresolvable without human knowledge.
-- **Log every significant decision** in TODO.md with: what, why, alternatives, which models consulted, agreement level.
-- **At completion**: write WALKTHROUGH in TODO.md -- the user reviews this when they return.
-- **NEVER present unreviewed work.** The user's time is the most expensive resource. Every cross-agent review is ITERATIVE (review -> fix -> re-review -> converge), not one-shot. The Walkthrough must be reviewed by Codex/Gemini before the user sees it. You are the LAST quality gate before the user, not the first.
+- **NEVER ask the user** for technical decisions. Dispatch to Codex/Gemini instead.
+- **Only halt for**: missing credentials, missing access, genuinely unresolvable without human knowledge.
+- **Log every decision** in TODO.md: what, why, alternatives, models consulted, agreement level.
+- **At completion**: write WALKTHROUGH in TODO.md, reviewed by Codex/Gemini before the user sees it.
+- **NEVER present unreviewed work.** Every cross-agent review is ITERATIVE, not one-shot.
 
----
+## Escalation Protocol
 
-## Anti-Reward-Hacking Principles
+When autonomy breaks down, **HALT and REPORT** -- no autonomous recovery loops.
 
-These are structural, not advisory. You cannot bypass them.
+- **Inaccessible source**: Search ONE alternative. Found -> proceed + document. Not found -> halt.
+- **Missing build environment**: Detect stack -> create minimal config + document assumption. Ambiguous -> halt.
+- **Model deadlock**: After 1 investigation round, apply Decision Precedence from plan. Max 2 rounds total.
+- **Validator cannot run**: The command itself errors (not test failure) -> halt. Never skip validators.
 
-### 1. Backpressure Validators (deterministic, per-commit)
-Before ANY commit, ALL of these must pass. No exceptions. No skipping "just this once."
+Halting = write state to TODO.md + output `<promise>BLOCKED: [reason]</promise>` + stop.
 
+Before halting:
 ```bash
-# The backpressure gate -- run BEFORE every commit
-# Backend
-TEST_EXIT=$(run_tests)        # All tests pass (not just new ones)
-LINT_EXIT=$(run_linter)       # Zero warnings policy
-TYPE_EXIT=$(run_type_check)   # Type checker clean (mypy/tsc)
-BUILD_EXIT=$(run_build)       # Build succeeds
-
-# Frontend (if applicable)
-# Use Claude-in-Chrome MCP to visually verify UI changes
+set -euo pipefail
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/duy-workflow}"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-blocked true >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-recent-failures 3 >/dev/null
 ```
 
-If ANY validator fails → fix it. Do not commit broken code and promise to fix later.
+## Anti-Reward-Hacking Rules (structural, not advisory)
 
-### 2. Test Map (TDAD pattern -- WHICH tests, not HOW to test)
-For each requirement, identify the specific test files/functions that verify it. Don't write generic "test everything" -- map source files to their affected tests. This is the process reward signal.
+1. **Backpressure validators** -- ALL validators from Build Environment must pass before ANY commit. No exceptions.
+2. **Test hash verification** -- Snapshot test file hashes at requirement start. Verify before each validator run. Hash mismatch = BLOCKED (structural fraud).
+3. **Decorrelation** -- Reviewer MUST be different model from implementer. Adversary MUST be different from both. NEVER self-review.
+4. **Copy Before Rewrite** -- Check Source Map FIRST. Only build from scratch if no reference exists AND a different model confirms this independently. (See `${CLAUDE_PLUGIN_ROOT}/templates/research-scaffold.md`.)
+5. **Never modify tests to pass** -- If tests fail, the code is wrong. To change a genuinely wrong test: document WHY in TODO.md Plan Amendments, get independent confirmation.
+6. **Constraint re-injection** -- Every 5 iterations AND after every context compaction: re-read plan from `$PLAN_PATH`, re-read CLAUDE.md, re-read the plan's Principles + Boundaries sections. Check for drift.
+7. **Execute-Verify-Report** (from OpenClaw) -- Every action follows this loop: DO the thing → VERIFY it worked (run it, check output, not "it looks right") → REPORT evidence to TODO.md (test output, integration result, review verdict). No action is complete without verification evidence logged.
+8. **Pre-compaction memory flush** -- Before context compression, write current state to TODO.md: active requirement, what was just done, what's next, any open concerns. Context can be compressed; TODO.md survives.
 
-```markdown
-## Test Map (in TODO.md)
-| Requirement | Source Files | Affected Tests | Status |
-|-------------|-------------|----------------|--------|
-| REQ-1       | src/auth.py | tests/test_auth.py::test_login, test_logout | PASS |
-| REQ-2       | src/api.py  | tests/test_api.py::test_create, test_validate | FAIL |
-```
+## The 10-Step Engineering Loop
 
-### 3. Cross-Agent Review (independent verification)
-No requirement is DONE until reviewed by a different agent. You cannot self-certify.
-- You implement → Codex reviews (or vice versa)
-- The reviewer checks against the acceptance criteria, not your description of what you did
+For each requirement by priority from the plan's Requirements table:
 
-### 4. Constraint Re-injection (every 5 iterations)
-Long context causes goal drift. Every 5 iterations:
-1. Re-read the plan from `.claude/plans/`
-2. Re-read CLAUDE.md
-3. Check: am I still building what was planned? Have I drifted?
-4. Check TODO.md Concerns section -- anything accumulating?
+### 1. ORIENT
+Re-read plan from `$PLAN_PATH` + TODO.md. What's next by priority?
+Every 5 iterations: full constraint re-injection (rule 6 above).
 
-### 5. Never Modify Tests to Pass
-If a test fails, the code is wrong. Not the test. If the test is genuinely wrong (tests an outdated spec), document WHY in TODO.md Plan Amendments before changing it, and get Codex to independently confirm.
-
----
-
-## Verification Tiers (Backend vs Frontend)
-
-### Backend: Three-Gate Verification
-For each requirement:
-
-**Gate 1 -- Unit tests (process reward)**
-Write tests FIRST. Run them. They must fail (red). Implement. They must pass (green). This is TDD -- not as a verbose procedure, but as the verification signal.
-
-**Gate 2 -- Integration test (pilot)**
-Start the actual system locally. Hit the real endpoints. Verify actual behavior matches acceptance criteria. Unit tests prove logic; integration tests prove the feature works.
-
+At the start of each requirement:
 ```bash
-# Example: start server, hit endpoint, check response
-ssh farmshare 'source ~/selfcorr-env/bin/activate && python3 -m pytest tests/integration/ -v'
-# Or locally:
-curl -X POST localhost:8000/api/endpoint -d '{"test": "data"}' | jq .
+set -euo pipefail
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/duy-workflow}"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-branch "{REQ-ID}" >/dev/null  # replace {REQ-ID} with the active requirement, e.g. REQ-2
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-completion-claimed false >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-blocked false >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-goal-aligned true >/dev/null
 ```
 
-**Gate 3 -- Cross-agent review (independent)**
-Codex reviews the diff against acceptance criteria. Not "does this look right" -- "does this satisfy WHEN X, system SHALL Y."
+### 2. RESEARCH
+Check Source Map FIRST. Only re-research if entry is missing, inaccessible, or wrong after reading actual code.
+Document source provenance in TODO.md per requirement.
 
-### Frontend: Visual + Functional Verification
-For each UI requirement:
+### 3. DECIDE
+**Every non-trivial decision triggers the Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`).
+Dispatch Codex + Gemini + Claude subagent in parallel. Max 3 rounds. Convergence = all agree with evidence.
+Deadlock → apply Decision Precedence from plan. Log positions + rationale in TODO.md Decisions section.
+Skip deliberation ONLY for mechanical/reversible choices the plan already decided.
 
-**Gate 1 -- Component tests**
-Unit test the components. Render, assert DOM state.
+**Context Discipline** (`${CLAUDE_PLUGIN_ROOT}/templates/context-discipline.md`):
+Exploration = sub-agents. Targeted reads = yourself. Heavy lifting = sub-agents. Decisions = yourself.
 
-**Gate 2 -- Visual verification (Claude-in-Chrome)**
-Use `mcp__claude-in-chrome__` tools to:
-1. Navigate to the page (`navigate`)
-2. Read the rendered page (`read_page` / `get_page_text`)
-3. Interact with elements (`javascript_tool`)
-4. Verify visual state matches acceptance criteria
+### 4. TEST FIRST (Adversarial TDD)
+Spawn sub-agent (DIFFERENT model than implementer) with `${CLAUDE_PLUGIN_ROOT}/templates/adversarial-tdd.md`.
+Pass: requirement text, acceptance criteria, Source Map reference.
+Tests MUST include: property-based invariants, edge cases, negative tests, mutation-killing tests.
+Sub-agent writes test files to disk + returns summary. Tests must run RED before step 5.
+Snapshot test file hashes NOW (for backpressure verification).
 
-```
-# Example flow:
-tabs_create_mcp → navigate to localhost:3000 → read_page → verify UI state
-→ javascript_tool to interact → read_page again → confirm state change
-```
+### 5. BUILD
+Spawn Claude sub-agent (Agent tool) or implement directly. FROM COPIED SOURCE -- never from memory.
+Pass: requirement, test files, Source Map reference.
+Small diffs. Sub-agent returns diff summary.
 
-**Gate 3 -- Cross-agent review**
-Codex reviews the component code. Gemini reviews for accessibility/UX if relevant.
+### 6. BACKPRESSURE
+Hash-verify test files against step 4 snapshot. Mismatch = BLOCKED.
+Run ALL validators from Build Environment (plan or TODO.md). Fix until ALL pass.
+Max 5 fix-and-rerun cycles. If still failing -> halt.
 
----
-
-## The Engineering Loop
-
-```
-1. ORIENT    -- Re-read plan + TODO.md. What's next by priority?
-                Every 5 iters: re-read plan, check for drift.
-     |
-2. RESEARCH  -- MANDATORY. COPY BEFORE REWRITE. (see below)
-     |
-3. DECIDE    -- Multiple approaches? Dispatch Codex + Gemini.
-                Log decision in TODO.md.
-     |
-4. TEST FIRST -- Write failing tests for this requirement.
-                Map source -> test in Test Map.
-     |
-5. BUILD     -- Implement FROM COPIED SOURCE. Small diffs.
-                NEVER rewrite from memory.
-     |
-6. BACKPRESSURE -- Run ALL validators: tests, lint, types, build.
-                ALL must pass. Fix until clean.
-     |
-7. VERIFY    -- Backend: integration test (hit real system).
-                Frontend: Claude-in-Chrome visual check.
-     |
-8. REVIEW    -- Cross-agent review (iterative, not one-shot).
-                Codex checks against acceptance criteria.
-     |
-9. COMMIT    -- Only after all gates pass. Update TODO.md.
-     |
-(back to 1, next requirement)
-```
-
-### Step 2: RESEARCH -- Copy Before Rewrite (NON-NEGOTIABLE)
-
-Before writing ANY new code for a requirement, you MUST find and copy existing implementations. NEVER build from scratch. NEVER rewrite from memory. The code you read 5 minutes ago is already wrong in your memory.
-
-**Search order (do ALL of these before writing a single line):**
-
-1. **Existing repo**: Grep/Glob the current codebase. Is there already code that does this or something similar? If yes, COPY IT as your starting point.
-
-2. **GitHub + Web**: `gh search repos "{requirement keywords}" --limit 10 --sort stars`. Also WebSearch for "{requirement} implementation github" and WebFetch promising results. Identify the best reference implementation.
-
-3. **DeepWiki**: `mcp__deepwiki__ask_question` on the best candidate repo. Understand the actual implementation -- not the README, the SOURCE CODE. Ask: "How does {repo} implement {feature}? Show me the key functions and data structures."
-
-4. **Copy the source**: Use `read_files_from_github_repository` or DeepWiki to read the actual implementation files. Copy them locally. If extracting from the current repo, `cp` the source files first.
-
-5. **Then adapt**: Modify the COPIED code to fit your needs. The diff between the reference and your version should be small and explainable.
-
-**Document in TODO.md for each requirement:**
-```
-### REQ-N: {name}
-- Source: {repo/file the code was copied from}
-- What was copied: {specific functions/classes}
-- What was adapted: {specific changes and why}
-- Built from scratch: {NOTHING -- or justify why no reference exists}
-```
-
-If "Built from scratch" is not "NOTHING", Codex must independently confirm no reference exists:
+After each successful validator, update mission state:
 ```bash
-export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
-codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-"The agent claims no existing implementation exists for: {requirement}.
-Search GitHub, your knowledge, and DeepWiki. Is this true? Or is the agent being lazy?
-If you find a reference: state the repo and file path."
+set -euo pipefail
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/duy-workflow}"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-evidence tests-pass passed >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-evidence lint-pass passed >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-evidence typecheck-pass passed >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-evidence build-pass passed >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . touch-progress >/dev/null
 ```
 
-**The golden rule: if you find yourself typing a class or function from scratch when a reference exists, you are reward-hacking. Stop. Copy. Adapt.**
+### 7. VERIFY
+Backend: integration test -- start system, hit real endpoints, verify behavior matches acceptance criteria.
+Frontend: Chrome visual check via `mcp__claude-in-chrome__` tools.
+ML/GPU: Smoke test via Google Colab MCP (see `~/.claude/skills/google-colab/SKILL.md`). Write .py files locally → run on Colab. CPU-first debugging, GPU only for actual compute. Never embed >15 lines as MCP string parameters.
 
----
-
-## Multi-Model Consultation
-
-At decision points (architecture, library choice, approach pivot):
-
+When integration verification passes:
 ```bash
-export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
-codex exec resume $CODEX_SESSION_ID --full-auto --skip-git-repo-check \
-  "DECISION: {context and options}. Which approach and why?"
-
-gemini -p "DECISION: {same context}. What would you choose? Biggest risk?"
+set -euo pipefail
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/duy-workflow}"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-evidence integration-pass passed >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . touch-progress >/dev/null
 ```
 
-- Convergence → proceed confidently
-- Disagreement → investigate the disagreement before deciding
-- Log everything in TODO.md Decisions section
+### 8. REVIEW (Iterative)
+Spawn sub-agent (DIFFERENT model than step 5 implementer) with `${CLAUDE_PLUGIN_ROOT}/templates/review-taxonomy.md`.
+Pass: requirement, acceptance criteria, diff.
+Default verdict: REJECT. Min 2 rounds, max 5 rounds. Convergence = APPROVE with no critical issues.
 
----
+### 9. ADVERSARIAL (Strengthen)
+Spawn sub-agent (DIFFERENT model than both implementer and reviewer) with `${CLAUDE_PLUGIN_ROOT}/templates/adversarial-prompt.md`.
+Pass: requirement, implementation code.
+Adversary reads actual code and tries to break it. Max 3 rounds.
+If broken -> fix -> re-run backpressure (step 6) -> adversarial again.
+PASS = adversary exhausted attack vectors.
 
-## TODO.md -- The Process Reward Rubric
+### 10. COMMIT
+Only after ALL gates pass (steps 4-9). Update TODO.md: mark requirement DONE, update Test Map, record backpressure results.
+Then back to step 1 for next requirement.
 
-This is not a checklist. It IS the reward signal that keeps execution honest.
-
-```markdown
-# TODO: {Plan Name}
-
-## Sessions
-codex_session: {UUID}
-
-## Test Map
-| Requirement | Source Files | Affected Tests | Backpressure | Status |
-|-------------|-------------|----------------|-------------|--------|
-| REQ-1       | src/auth.py | test_auth::login | tests ✓ lint ✓ types ✓ | DONE |
-| REQ-2       | src/api.py  | test_api::create | tests ✗ (line 47) | IN PROGRESS |
-
-## Roadmap
-### REQ-1: {Name} [critical]
-- [x] Tests written (RED) -- Claude, iter 1
-- [x] Implementation (GREEN) -- Claude, iter 2
-- [x] Backpressure: tests ✓ lint ✓ types ✓ build ✓
-- [x] Integration: started server, hit /api/auth, got 200
-- [x] Review: Codex APPROVED -- iter 3
-
-### REQ-2: {Name} [critical]
-- [x] Tests written (RED) -- Codex, iter 2
-- [ ] Implementation -- Codex, iter 4 -- ACTIVE
-- [ ] Backpressure
-- [ ] Integration / Visual check
-- [ ] Review: Claude pending
-
-## Decisions
-- iter 2: chose {X} over {Y}
-  - Codex: {agreed, noted risk Z}
-  - Gemini: {preferred Y, but conceded on X given constraint}
-  - Rationale: {why}
-
-## Plan Amendments
-- iter 3: REQ-3 approach changed -- {why, what changed}
-
-## Concerns
-- {things for user to review at completion}
-
-## Walkthrough (written at completion)
-- What was built and how it works
-- Key decisions: {each with rationale}
-- What diverged from the plan: {with why}
-- What I'd improve in v2
-- Remaining concerns for user review
+Before final completion:
+```bash
+set -euo pipefail
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/duy-workflow}"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-evidence walkthrough-written passed >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . set-completion-claimed true >/dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/mission-state.py" --project . touch-progress >/dev/null
 ```
 
----
+## TODO.md
+
+Create from `${CLAUDE_PLUGIN_ROOT}/templates/todo-template.md`. The orchestrator reads this template ONCE at initialization, never keeps it in context.
+
+Mission artifacts are equal in status to TODO.md for this workflow:
+- `.claude/mission/intent.json` = durable objective
+- `.claude/mission/plan.md` = active branch summary
+- `.claude/mission/evidence.json` = required completion gates
+- `.claude/mission/state.json` = supervisor-readable runtime state
+
+Maintain them during execution. TODO.md is for narrative and review history; mission files are for control.
 
 ## Initialize Ralph Loop
 
@@ -277,44 +213,22 @@ RALPH_PROMPT=$(mktemp /tmp/claude-execute-prompt-XXXXXX.txt)
 cat > "$RALPH_PROMPT" << 'PROMPT_EOF'
 You are a Principal Engineer executing an approved plan autonomously. The user is away.
 
-AUTONOMY: Never ask the user. Consult Codex/Gemini at decision points. Only stop for missing credentials/access.
+AUTHORITY: The /execute skill definition is authoritative. This prompt orients you; the skill's rules govern.
 
-PLAN: Read the plan file at .claude/plans/ (the pre-flight already verified it exists and printed its path). Read CLAUDE.md. Read TODO.md if resuming. If NO plan file exists, STOP immediately -- do not guess what to build.
+PLAN: Read the plan at .claude/plans/ (pre-flight verified + printed path). Store the path as $PLAN_PATH -- always re-read THAT file. Read CLAUDE.md. Read TODO.md if resuming.
 
-ANTI-REWARD-HACKING:
-1. Backpressure: ALL validators (tests, lint, types, build) must pass before EVERY commit. No exceptions.
-2. Test map: for each requirement, map source files -> affected tests in TODO.md. This is your process reward.
-3. Cross-agent review: you cannot self-certify. Codex reviews your work iteratively (review -> fix -> re-review -> converge).
-4. Re-injection: every 5 iterations, re-read the plan and CLAUDE.md. Check for drift.
-5. COPY BEFORE REWRITE: Before writing ANY new code, search the existing repo (Grep/Glob), GitHub (gh search), and DeepWiki for reference implementations. COPY the actual source files. Adapt from copied code. NEVER rewrite from memory. If no reference exists, Codex must independently confirm this. Document source for every requirement in TODO.md.
-6. Never modify tests to make them pass. If a test fails, the code is wrong.
-5. Never modify tests to make them pass. If a test fails, the code is wrong.
+AUTONOMY: Never ask the user. Consult Codex/Gemini at decision points (max 2 rounds, then Decision Precedence). Only halt for: missing credentials/access, genuinely unresolvable. Halt = TODO.md state + <promise>BLOCKED: [reason]</promise>.
 
-VERIFICATION:
-- Backend: unit tests (TDD) → integration test (start system, hit endpoints) → cross-agent review
-- Frontend: component tests → Claude-in-Chrome visual verification → cross-agent review
+LOOP: Follow the /execute skill's 10-step engineering loop for each requirement by priority:
+1. ORIENT  2. RESEARCH  3. DECIDE  4. TEST FIRST (adversarial TDD, different model)
+5. BUILD  6. BACKPRESSURE (hash-verify + all validators)  7. VERIFY
+8. REVIEW (iterative, min 2 / max 5 rounds, default REJECT, different model)
+9. ADVERSARIAL (different model tries to break code, max 3 rounds)
+10. COMMIT (only after ALL gates pass)
 
-LOOP: For each requirement by priority:
-1. ORIENT -- re-read plan + TODO.md
-2. RESEARCH (NON-NEGOTIABLE) -- BEFORE writing any code:
-   a. Grep/Glob existing repo for similar code. If found, COPY it.
-   b. gh search repos + WebSearch + WebFetch for reference implementations.
-   c. DeepWiki on best candidate -- read the SOURCE, not the README.
-   d. Copy actual source files locally. Document in TODO.md: what was copied, from where, what needs adapting.
-   e. If truly nothing exists, have Codex independently confirm.
-   NEVER skip this step. NEVER write from scratch when a reference exists.
-3. DECIDE -- if multiple approaches, consult Codex + Gemini, log decision
-4. TEST FIRST -- write failing tests, add to test map
-5. BUILD -- implement FROM COPIED SOURCE. Adapt, don't rewrite. Small diffs.
-6. BACKPRESSURE -- run all validators, fix until clean
-7. VERIFY -- backend: integration. frontend: chrome visual check
-8. REVIEW -- iterative cross-agent review (review -> fix -> re-review). Not one-shot.
-9. COMMIT -- only after all gates pass. Update TODO.md.
+DECORRELATION: Test writer != implementer != reviewer != adversary. Rotate models.
 
-COMPLETION: When ALL requirements pass ALL gates:
-1. Write Walkthrough section in TODO.md
-2. Update CLAUDE.md with lessons learned
-3. Verify build + lint + types clean one final time
+COMPLETION: All requirements pass all gates -> write Walkthrough in TODO.md -> Codex/Gemini review Walkthrough -> final build+lint+types clean.
 
 <promise>ALL_REQUIREMENTS_VERIFIED</promise>
 If blocked: <promise>BLOCKED: [reason]</promise>
@@ -331,7 +245,7 @@ export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 echo "═══════════════════════════════════════════════════════════════════"
 echo "AUTONOMOUS MODE -- User is away. Consulting Codex/Gemini at decisions."
 echo ""
-echo "Anti-reward-hacking: backpressure validators, test map, cross-agent review"
+echo "Anti-reward-hacking: backpressure + hash verification + adversarial TDD + cross-agent review"
 echo "Promise: ALL_REQUIREMENTS_VERIFIED"
 echo ""
 echo "This means: ALL gates passed, not 'it looks done'."

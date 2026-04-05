@@ -8,6 +8,23 @@ allowed-tools: Task, Read, Write, Edit, Bash, Glob, Grep, Agent, TeamCreate, Tea
 
 Mathematical derivation swarm inspired by AlphaProof + Aletheia. Four agents -- Mathematician, Adversary, Literature Scout, Verifier -- collaborate as teammates who talk directly to each other. Each derivation step is a mini-experiment: propose → verify (3-tier) → route (ADVANCE / REVISE / REGENERATE) → attack → check literature → advance or revert. The proof-chain only advances on convergence.
 
+## Foundational Rigors (apply at every derivation step)
+
+**Three-Question Audit** (`${CLAUDE_PLUGIN_ROOT}/templates/first-principles-rigor.md`):
+1. **DELETION**: Is this step load-bearing in the proof chain? Can we derive the result with fewer steps?
+2. **PRESENCE**: Verify with SymPy/z3, not intuition. Execute the computation. A step you haven't mechanically verified is a conjecture.
+3. **URGENCY**: Cheapest verification first. `verify-math -c` before launching a full derivation swarm.
+
+**Research Scaffold** (`${CLAUDE_PLUGIN_ROOT}/templates/research-scaffold.md`):
+→ Before deriving: alphaxiv search for existing proofs → DeepWiki for reference implementations → copy proven techniques.
+Don't re-derive what Euler already proved. Literature Scout's job is to prevent redundant derivation.
+
+**Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`):
+Every proof strategy choice and contested step → multi-model deliberation. Mathematician proposes, Adversary attacks, Verifier executes. Converge before advancing.
+
+**Context Discipline** (`${CLAUDE_PLUGIN_ROOT}/templates/context-discipline.md`):
+Exploration = sub-agents. Targeted reads = yourself. Heavy lifting = sub-agents. Decisions = yourself.
+
 ## Core Heuristics (from AlphaProof + Aletheia)
 
 These heuristics govern how the team operates. Every teammate must internalize them.

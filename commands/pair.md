@@ -8,6 +8,23 @@ allowed-tools: Task, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, A
 
 Launch a collaboration session where you (Claude Code) and Codex work the same repo as autonomous peers. Both agents independently make progress while communicating through an async message queue -- debating decisions, sharing specs, reviewing each other's work.
 
+## Foundational Rigors (apply before and during pairing)
+
+**Three-Question Audit** (`${CLAUDE_PLUGIN_ROOT}/templates/first-principles-rigor.md`):
+1. **DELETION**: What is the minimum task split? Don't create artificial boundaries. Cut the work at natural seams.
+2. **PRESENCE**: Each peer works on the actual code, not abstractions of it. Debate over diffs, not descriptions.
+3. **URGENCY**: Ship incrementally. Don't wait for the other peer to finish. Push, communicate, iterate.
+
+**Research Scaffold** (`${CLAUDE_PLUGIN_ROOT}/templates/research-scaffold.md`):
+→ Both peers: before building, search for existing implementations → DeepWiki → copy → scaffold.
+Neither peer should build from scratch when references exist. The message queue should share found references.
+
+**Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`):
+Architecture disagreements between peers → both research independently, then debate over evidence. The pair IS deliberation. Convergence before either proceeds on a contested decision.
+
+**Context Discipline** (`${CLAUDE_PLUGIN_ROOT}/templates/context-discipline.md`):
+Exploration = sub-agents. Targeted reads = yourself. Heavy lifting = sub-agents. Decisions = yourself.
+
 ## Execution Steps
 
 ### Step 1: Parse the user's request
