@@ -5,6 +5,11 @@ Acceptance criteria: WHEN {trigger}, system SHALL {behavior}.
 
 You are a DIFFERENT model than the implementer. Your tests must be HARD TO PASS correctly but easy to fail by gaming (hardcoding, heuristics, shortcuts).
 
+## Refactor mode (behavior-preserving)
+If this is a refactor, not a new feature, there is no new behavior to specify — the current behavior IS the spec. Before any edit, state the triad:
+**current behavior** (must not change) → **structural change** (delete dead path / extract helper / modernize pattern) → **proof** (a Category 6 parity test).
+Capture the golden output FIRST, while the old code still runs. Then refactor until parity holds.
+
 ## Test Categories (write tests in ALL categories that apply)
 
 ### 1. Acceptance Criteria (WHEN/SHALL)
@@ -43,6 +48,13 @@ These catch heuristic solutions that only handle known test cases.
 ### 5. Mutation-Killing Tests
 "If you change {specific aspect of correct implementation}, this test MUST fail."
 Tests that are sensitive to the CORRECTNESS of the implementation, not just its output format.
+
+### 6. Characterization / Parity Tests (behavior-preserving refactors only)
+The test is the OLD behavior, not a spec. Use when output MUST NOT change.
+- Capture current output as a golden snapshot BEFORE touching code (record it, don't hand-write it).
+- Assert `refactored(x) == legacy(x)` across real AND fuzzed inputs — diff the two side by side.
+- Pin observable side effects too: emitted events, DB writes, call order, log/error messages.
+These catch silent drift that property tests miss: a refactor can preserve every invariant and still change output.
 
 ## Rules
 - Write EXECUTABLE test code, not descriptions

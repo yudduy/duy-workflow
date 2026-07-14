@@ -141,34 +141,28 @@ done
 grep -q 'REQ-[0-9]' "$PLAN" || echo "ERROR: No enumerated requirements found"
 ```
 
-**Step 4: Create mission artifacts.**
+**Step 4: Launch background execution automatically.**
+
 ```bash
-set -euo pipefail
-export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/duy-workflow}"
-[ -d "$CLAUDE_PLUGIN_ROOT" ]
-mkdir -p .claude/mission
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sync-mission.py" --plan "$PLAN" --phase interview
-ls -la .claude/mission/
-jq -e . .claude/mission/intent.json >/dev/null
-jq -e . .claude/mission/evidence.json >/dev/null
-jq -e . .claude/mission/state.json >/dev/null
-grep -q '^# Mission Plan:' .claude/mission/plan.md
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+bash "${PLUGIN_ROOT}/scripts/launch-background.sh" \
+  --plugin-root "$PLUGIN_ROOT" \
+  --max-iterations 50 \
+  --max-review-iter 10
 ```
 
-Mission artifacts are required output of `/interview`, not optional extras.
-
-**Step 5: Confirm.**
+**Step 5: Confirm to user:**
 ```
-Product Intent Document written to .claude/plans/{PLAN_ID}.md
-- Plan ID: {PLAN_ID}
-- Job: {one sentence}
-- Requirements: {N} (REQ-1 through REQ-N)
-- Approach: {scaffold from X, build Y}
-- Build Environment: {test/lint/type/build commands confirmed}
-- Knowledge Map: {N sources, M verified}
-- Principles: {top 3}
-- Review convergence: {PASSED / Unresolved: ...}
-- Mission artifacts: `.claude/mission/{intent.json,plan.md,evidence.json,state.json}`
+Plan written to .claude/plans/{auto-name}.md
+Background session launched (see session name above).
+
+Walk away. You'll get a macOS notification when done and reviewed.
+
+Monitor:
+  git log --oneline -10
+  tmux attach -t <session-name>
+  tail -f .claude/review-<session-name>.log
 ```
 
 **Step 6: Invoke /execute.** Invoke the `duy-workflow:execute` skill via the Skill tool. The plan and mission artifacts are on disk -- `/execute` reads and maintains them.

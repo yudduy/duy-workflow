@@ -22,6 +22,22 @@ Targeted reads = yourself (you know exactly what you need).
 Heavy lifting (research, review, testing) = sub-agents with fresh context.
 Decisions and tracking = yourself.
 
+## Orchestrator Role Definition
+
+The Orchestrator's job is **synthesize findings from sub-agent reports and decide next direction**. That is the complete job description.
+
+**Never**: read files for exploration. Never search broadly. Never accumulate raw results.
+
+**The 3-file rule**: if you find yourself about to read 3 or more files to find something, that is Scout work. Spawn a subagent. The Orchestrator reads note files (landscape.md, evidence.md, etc.) — it does not go looking for things.
+
+**Why this matters**: the Orchestrator's context must last 100+ iterations. Every exploratory read is context pollution that degrades decision quality at iteration 50+. Role clarity IS the enforcement — not a rule you follow, but a job description that makes the wrong action structurally alien.
+
+Role discipline in the team:
+- **Scout**: searches broadly, writes to KNOWLEDGE-MAP.md or notes/landscape.md
+- **Theorist**: generates hypotheses, writes to UNDERSTANDING.md or notes/analogies.md
+- **Critic**: invokes conjecture-review.md, writes to dead-ends
+- **Orchestrator**: reads sub-agent outputs, synthesizes, decides next direction — nothing else
+
 ## Sub-agent dispatch:
 1. Spawn with specific task + template prompt
 2. Sub-agent gets fresh context (full budget for its task)

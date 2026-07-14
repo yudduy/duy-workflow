@@ -19,8 +19,8 @@ Before writing ANY new code, run the **Research Scaffold** from `${CLAUDE_PLUGIN
 → `gh search repos` + `gh search code` → DeepWiki on best candidates → alphaxiv (3 tools parallel) → git clone → copy → adapt.
 **Never build from scratch when a reference exists.** Source Map in the plan has the references — use them FIRST.
 
-**Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`):
-Every non-trivial decision → dispatch Codex + Gemini + Claude in parallel, iterate to convergence. The user is the LAST checkpoint. Exhaust web search, alphaxiv, DeepWiki, and multi-model deliberation BEFORE anything reaches the user.
+**Autoreason Tournament** (`${CLAUDE_PLUGIN_ROOT}/templates/autoreason-tournament.md`):
+Every non-trivial decision → run the tournament: isolated adversaries, blind judge panel, empirical convergence (incumbent wins 3 consecutive rounds). The user is the LAST checkpoint. Exhaust web search, alphaxiv, DeepWiki, and tournament deliberation BEFORE anything reaches the user.
 
 ## Pre-flight
 
@@ -119,10 +119,10 @@ Check Source Map FIRST. Only re-research if entry is missing, inaccessible, or w
 Document source provenance in TODO.md per requirement.
 
 ### 3. DECIDE
-**Every non-trivial decision triggers the Deliberation Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/deliberation-protocol.md`).
-Dispatch Codex + Gemini + Claude subagent in parallel. Max 3 rounds. Convergence = all agree with evidence.
-Deadlock → apply Decision Precedence from plan. Log positions + rationale in TODO.md Decisions section.
-Skip deliberation ONLY for mechanical/reversible choices the plan already decided.
+**Every non-trivial decision triggers the Autoreason Tournament** (`${CLAUDE_PLUGIN_ROOT}/templates/autoreason-tournament.md`).
+Run isolated adversaries + blind judge panel + empirical convergence (3 consecutive wins). No cross-contamination.
+Deadlock (round 10, no convergence) → apply Decision Precedence from plan. Log winner + rationale in TODO.md Decisions section.
+Skip tournament ONLY for mechanical/reversible choices the plan already decided — use parallel dispatch from deliberation-protocol.md for those.
 
 **Context Discipline** (`${CLAUDE_PLUGIN_ROOT}/templates/context-discipline.md`):
 Exploration = sub-agents. Targeted reads = yourself. Heavy lifting = sub-agents. Decisions = yourself.

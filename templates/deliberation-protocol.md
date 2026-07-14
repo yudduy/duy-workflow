@@ -18,9 +18,21 @@ Every major decision triggers this protocol. Not optional. Not "consult if stuck
 - Decisions the plan already made (just execute, don't re-litigate)
 - Cost-limited operations where the decision is low-stakes and reversible
 
-## The Protocol (3 models, parallel dispatch, iterative convergence)
+## The Protocol
 
-### Round 1: Parallel dispatch (all 3 in background)
+### For major decisions: Autoreason Tournament
+
+When the decision is hard to reverse, sycophancy risk is high, or the stakes are major → use the **Autoreason Tournament** (`${CLAUDE_PLUGIN_ROOT}/templates/autoreason-tournament.md`).
+
+The tournament uses role isolation + blind evaluation + empirical convergence (incumbent wins 3 consecutive rounds from 3 independent judges). This is structurally honest — models cannot drift toward agreement because they never share context during production.
+
+**When to use tournament**: architecture decisions, design choices, research conclusions, conjecture verdicts, any `/execute` DECIDE step.
+
+### For routine deliberation: Parallel dispatch (single round)
+
+When a quick multi-model check suffices (information-gathering, low-stakes reversible decisions, research verification) → use the parallel dispatch below.
+
+**⚠ Role isolation still applies**: each model dispatches in parallel with fresh context. No cross-contamination.
 
 **Codex** (via Bash, `run_in_background: true`, `timeout: 300000`):
 ```bash
@@ -43,15 +55,7 @@ Use WebSearch, alphaxiv, DeepWiki. Cite sources. Flag uncertainty.
 Write findings to {output_path}. Last line: CONFIDENCE: [0-100]
 ```
 
-### Round 2+: Cross-pollinate (each sees the others' findings)
-
-Feed revised context + ALL findings to each. They must:
-- Critique the others' positions
-- Provide NEW evidence (not just restate)
-- Explicitly say if they changed their mind and WHY
-- Update confidence
-
-### Convergence
+### Convergence (parallel dispatch)
 
 **Consensus = ALL of these:**
 - All 3 agree on the core answer with evidence (not mutual deference)
@@ -64,12 +68,10 @@ Feed revised context + ALL findings to each. They must:
 - All agree but none cite evidence (groupthink)
 - Surface agreement but contradictory mechanisms
 
-### Termination
-
-- Consensus → proceed with the agreed position
-- Deadlock (same positions 2 rounds, no new evidence) → apply Decision Precedence from plan, document the disagreement
-- Max 3 rounds for decisions, max 5 for research conclusions
-- Always log: what was decided, which models agreed, what the dissent was
+**Termination:**
+- Consensus → proceed
+- Deadlock → apply Decision Precedence from plan; document the disagreement
+- Max 1 round for routine checks; use tournament for anything that reaches round 2
 
 ## How to Log
 
