@@ -1,7 +1,7 @@
 {
   "name": "duy-workflow",
-  "version": "1.0.0",
-  "description": "Research, spec generation, and Ralph-powered autonomous execution for Claude Code. 11 skills: research, interview, execute, verify, discover, distill, pair, derive, commit-push-pr, cancel-ralph, rigor.",
+  "version": "1.1.0",
+  "description": "Ralph-powered autonomous execution loops for Claude Code. 4 skills: execute, background, cancel-ralph, commit-push-pr.",
   "author": {
     "name": "yudduy"
   },

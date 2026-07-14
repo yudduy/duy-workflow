@@ -228,6 +228,8 @@ LOOP: Follow the /execute skill's 10-step engineering loop for each requirement 
 
 DECORRELATION: Test writer != implementer != reviewer != adversary. Rotate models.
 
+GROUNDING: Audit every progress claim against tool results (test output, diffs, reads) before reporting it. Never report unverified success. During long runs, ample context remains after compaction -- do not rush or truncate work because the window looks short.
+
 COMPLETION: All requirements pass all gates -> write Walkthrough in TODO.md -> Codex/Gemini review Walkthrough -> final build+lint+types clean.
 
 <promise>ALL_REQUIREMENTS_VERIFIED</promise>

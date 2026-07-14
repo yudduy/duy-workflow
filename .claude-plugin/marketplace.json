@@ -1,14 +1,14 @@
 {
   "name": "duy-workflow",
-  "description": "Interview-driven spec generation and Ralph-powered autonomous execution",
+  "description": "Ralph-powered autonomous execution loops",
   "owner": {
     "name": "yudduy"
   },
   "plugins": [
     {
       "name": "duy-workflow",
-      "description": "Interview-driven spec generation and Ralph-powered autonomous execution",
-      "version": "1.0.0",
+      "description": "Ralph-powered autonomous execution loops",
+      "version": "1.1.0",
       "source": "./"
     }
   ]

@@ -1,5 +1,5 @@
 #!/bin/bash
-source "${HOME}/.claude/hooks/env.sh" 2>/dev/null || export PATH="/Users/duy/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+source "${HOME}/.claude/hooks/env.sh" 2>/dev/null || export PATH="${HOME}/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 # Ralph Wiggum Stop Hook
 # Prevents session exit when a ralph-loop is active
